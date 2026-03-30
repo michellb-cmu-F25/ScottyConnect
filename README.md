@@ -21,3 +21,11 @@ source venv/bin/activate
 
 python3 run.py
 ```
+
+### Frontend
+
+```
+npm install
+
+npm run dev
+```
