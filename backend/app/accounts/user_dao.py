@@ -1,0 +1,48 @@
+# Data access for User documents in MongoDB.
+
+from datetime import datetime, timezone
+
+from app.accounts.Models.User import User
+from app.utils.db import Database, get_database
+
+USERS_COLLECTION = "users"
+
+
+class UserDAO:
+    def __init__(self, database: Database | None = None) -> None:
+        self._database = database or get_database()
+
+    @property
+    def _col(self):
+        return self._database.db[USERS_COLLECTION]
+
+    def insert(self, user: User) -> User:
+        doc = user.model_dump(exclude={"id"}, exclude_none=True)
+        result = self._col.insert_one(doc)
+        return user.model_copy(update={"id": str(result.inserted_id)})
+
+    def find_by_email(self, email: str) -> User | None:
+        doc = self._col.find_one({"email": email})
+        return self._to_user(doc)
+
+    def find_by_username(self, username: str) -> User | None:
+        doc = self._col.find_one({"username": username})
+        return self._to_user(doc)
+
+    def set_verified(self, email: str, verified: bool) -> bool:
+        now = datetime.now(timezone.utc)
+        res = self._col.update_one(
+            {"email": email},
+            {"$set": {"verified": verified, "updated_at": now}},
+        )
+        return res.modified_count > 0
+
+    @staticmethod
+    def _to_user(doc: dict | None) -> User | None:
+        if doc is None:
+            return None
+        payload = dict(doc)
+        oid = payload.pop("_id", None)
+        if oid is not None:
+            payload["id"] = str(oid)
+        return User.model_validate(payload)
