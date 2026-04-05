@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from app.accounts.Models.User import User
+from app.accounts.model.User import User
 from app.utils.db import Database, get_database
 
 USERS_COLLECTION = "users"
@@ -17,6 +17,10 @@ class UserDAO:
         return self._database.db[USERS_COLLECTION]
 
     def insert(self, user: User) -> User:
+        if self.find_by_email(user.email) is not None:
+            raise ValueError("Email already registered")
+        if self.find_by_username(user.username) is not None:
+            raise ValueError("Username already taken")
         doc = user.model_dump(exclude={"id"}, exclude_none=True)
         result = self._col.insert_one(doc)
         return user.model_copy(update={"id": str(result.inserted_id)})

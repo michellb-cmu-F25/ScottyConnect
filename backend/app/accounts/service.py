@@ -8,22 +8,22 @@ import secrets
 
 from dotenv import load_dotenv
 
-from app.accounts.Models.User import User
+from app.accounts.model.User import User
 from app.accounts.schemas import LoginRequest, RegisterRequest, VerifyRequest
 from app.accounts.user_dao import UserDAO
 from app.utils.jwt import JWT
-from app.bus.message_bus import Service
-from app.bus.message import MessageType
+from app.bus.message_bus import Service, MessageBus
+from app.bus.message import Message, MessageType
 
 load_dotenv()
 
-EXTENSION_KEY = "account_service"
+ACCOUNT_SERVICE_EXTENSION_KEY = "account_service"
 
 
 def get_account_service() -> "AccountService":
     from flask import current_app
 
-    return current_app.extensions[EXTENSION_KEY]
+    return current_app.extensions[ACCOUNT_SERVICE_EXTENSION_KEY]
 
 
 """
@@ -48,7 +48,7 @@ class AccountService(Service):
             verification_code=secrets.token_urlsafe(16),
         )
         saved = self._users.insert(user)
-        MessageBus.publish(Message(MessageType.ACCOUNT_MESSAGE, saved.model_dump()))
+        MessageBus.publish(Message(MessageType.REGISTER_MESSAGE, saved.model_dump()))
         return saved, 201
 
     def verify(self, request: VerifyRequest) -> tuple[User | None, int]:
