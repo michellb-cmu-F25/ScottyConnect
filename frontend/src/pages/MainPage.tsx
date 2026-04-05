@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import './MainPage.css'
+import '../styles/Main.css'
 
 const MOCK_ACTIVE_EVENTS = [
   {

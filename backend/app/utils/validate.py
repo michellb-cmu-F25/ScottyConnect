@@ -1,3 +1,6 @@
+"""
+Decorator to validate request body against a Pydantic model.
+"""
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, TypeVar, ParamSpec

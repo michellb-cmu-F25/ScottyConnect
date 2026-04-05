@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import './Auth.css'
+import '../styles/Auth.css'
+import StorageUtil from '../common/StorageUtil'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -15,7 +16,7 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
 
-    if (!username.trim() || !password) {
+    if (!username.trim() || !password.trim()) {
       setError('Please enter both username and password.')
       return
     }
@@ -25,19 +26,25 @@ export default function LoginPage() {
       const res = await fetch('/api/accounts/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password }),
+        body: JSON.stringify({ username: username.trim(), password: password.trim() }),
       })
       
       const data = await res.json()
+
+      if (data.code === 403) {
+        StorageUtil.setUser(data.user.username, data.user.email)
+        navigate('/verify')
+        return
+      }
 
       if (!res.ok) {
         setError(data.message || 'Login failed. Please try again.')
         return
       }
 
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
-      navigate('/')
+      StorageUtil.setUser(data.user.username, data.user.email)
+      StorageUtil.setToken(data.token)
+      navigate('/mainpage')
     } catch {
       setError('Unable to connect to the server.')
     } finally {

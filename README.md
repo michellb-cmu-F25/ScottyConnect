@@ -29,3 +29,15 @@ npm install
 
 npm run dev
 ```
+
+## Documentation
+
+### Login Workflow
+```mermaid
+stateDiagram-v2
+    login_page --> register_page: wants to register, redirect
+    register_page --> verification_page: successful registration, redirect
+    login_page --> verification_page: valid credentials but not verified, redirect
+    verification_page --> main_page: successful verification, redirect
+    login_page --> main_page: successful login, redirect
+```

@@ -8,6 +8,6 @@ def health():
 
 # Subroutes for each service
 from app.accounts.routes import accounts
-main.register_blueprint(accounts)
+main.register_blueprint(accounts, url_prefix="/api/accounts")
 
 # TODO: Add subroutes for each service here.

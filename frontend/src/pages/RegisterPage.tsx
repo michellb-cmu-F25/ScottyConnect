@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import './Auth.css'
-
+import '../styles/Auth.css'
+import StorageUtil from '../common/StorageUtil'
 export default function RegisterPage() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
@@ -54,9 +54,8 @@ export default function RegisterPage() {
         return
       }
 
-      navigate('/login', {
-        state: { message: 'Account created! Please check your email to verify, then sign in.' },
-      })
+      StorageUtil.setUser(data.user.username, data.user.email)
+      navigate('/verify')
     } catch {
       setError('Unable to connect to the server.')
     } finally {
