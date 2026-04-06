@@ -8,16 +8,18 @@
 ### Backend
 
 Dependency Installation
+
 ```
 cd backend
 
 python3 -m venv venv
 source venv/bin/activate
 
-pip install -r requirements.txt
+pip install -r ../requirements.txt
 ```
 
 Running the server
+
 ```
 cd backend
 source venv/bin/activate
@@ -36,6 +38,7 @@ npm run dev
 ## Documentation
 
 ### Login Workflow
+
 ```mermaid
 stateDiagram-v2
     login_page --> register_page: wants to register, redirect
@@ -44,3 +47,6 @@ stateDiagram-v2
     verification_page --> main_page: successful verification, redirect
     login_page --> main_page: successful login, redirect
 ```
+
+
+
