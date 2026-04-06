@@ -2,6 +2,9 @@
 
 ## Getting Started
 
+
+### [`.env` credentials](https://docs.google.com/document/d/1I8QGCt-lDkfaWxP5T4JB0hLBJrnG9gvZf_Dyj7ToN5c/edit?usp=sharing) 
+
 ### Backend
 
 Dependency Installation
