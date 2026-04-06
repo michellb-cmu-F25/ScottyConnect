@@ -1,5 +1,10 @@
 # ScottyConnect Web App
 
+## About
+
+### [Production Link](https://project-3ht01.vercel.app/login)
+### [API Documentation](https://project-3ht01.vercel.app/docs)
+
 ## Getting Started
 
 
