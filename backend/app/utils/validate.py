@@ -1,15 +1,17 @@
+"""
+Decorator to validate request body against a Pydantic model.
+"""
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, TypeVar, ParamSpec
+from typing import Any, ParamSpec
 
 from flask import jsonify, request
 from pydantic import BaseModel, ValidationError
 
-ReqT = TypeVar("ReqT", bound=BaseModel)
 P = ParamSpec("P")
 
 
-def validate(model: type[ReqT]) -> Callable[[Callable[P, Any]], Callable[P, Any]]:
+def validate(model: type[BaseModel]) -> Callable[[Callable[P, Any]], Callable[P, Any]]:
     def decorator(view: Callable[P, Any]) -> Callable[P, Any]:
         @wraps(view)
         def wrapped(*args: P.args, **kwargs: P.kwargs) -> Any:

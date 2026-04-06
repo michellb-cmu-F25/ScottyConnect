@@ -2,6 +2,9 @@
 
 ## Getting Started
 
+
+### [`.env` credentials](https://docs.google.com/document/d/1I8QGCt-lDkfaWxP5T4JB0hLBJrnG9gvZf_Dyj7ToN5c/edit?usp=sharing) 
+
 ### Backend
 
 Dependency Installation
@@ -28,4 +31,16 @@ python3 run.py
 npm install
 
 npm run dev
+```
+
+## Documentation
+
+### Login Workflow
+```mermaid
+stateDiagram-v2
+    login_page --> register_page: wants to register, redirect
+    register_page --> verification_page: successful registration, redirect
+    login_page --> verification_page: valid credentials but not verified, redirect
+    verification_page --> main_page: successful verification, redirect
+    login_page --> main_page: successful login, redirect
 ```
