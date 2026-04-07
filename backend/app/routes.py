@@ -50,4 +50,7 @@ def docs():
 from app.accounts.routes import accounts
 main.register_blueprint(accounts, url_prefix="/api/accounts")
 
+from app.lifecycle.routes import lifecycle
+main.register_blueprint(lifecycle, url_prefix="/api/lifecycle")
+
 # TODO: Add subroutes for each service here.
