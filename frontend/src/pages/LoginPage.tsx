@@ -32,7 +32,7 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (data.code === 403) {
-        StorageUtil.setUser(data.user.username, data.user.email)
+        StorageUtil.setUser(data.user.username, data.user.email, data.user.id)
         navigate('/verify')
         return
       }
@@ -42,7 +42,7 @@ export default function LoginPage() {
         return
       }
 
-      StorageUtil.setUser(data.user.username, data.user.email)
+      StorageUtil.setUser(data.user.username, data.user.email, data.user.id)
       StorageUtil.setToken(data.token)
       navigate('/mainpage')
     } catch {

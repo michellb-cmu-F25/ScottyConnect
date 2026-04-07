@@ -16,6 +16,7 @@ from app.accounts.schemas import (
     RegisterResponse,
     VerifyResponse,
     LoginResponse,
+    UpdateProfileRequest,
 )
 from app.accounts.user_dao import UserDAO
 from app.utils.jwt import JWT
@@ -53,6 +54,9 @@ class AccountService(Service):
             username=user.username,
             email=user.email,
             verified=user.verified,
+            role=user.role,
+            bio=user.bio,
+            tags=user.tags,
             created_at=user.created_at,
             updated_at=user.updated_at,
         )
@@ -68,6 +72,7 @@ class AccountService(Service):
             email=request.email,
             password=request.password,
             verification_code=generate_verification_code(),
+            role=request.role,
         )
         
         # Insert user
@@ -139,3 +144,24 @@ class AccountService(Service):
             token=token,
             code=200,
         )
+    
+    def update_profile(self, request: UpdateProfileRequest) -> bool:
+        """Updates the bio and tags for a user."""
+        user = self._users.find_by_id(request.user_id)
+        if not user:
+            return False
+        
+        user.bio = request.bio
+        user.tags = request.tags
+        return self._users.update(user)
+
+    def get_discover_users(self, current_user_id: str | None = None) -> list[PublicUser]:
+        """Returns a list of all users, potentially excluding the current user."""
+        # For now, just return all users from the collection
+        cursor = self._users._col.find()
+        users = []
+        for doc in cursor:
+            user = self._users._to_user(doc)
+            if user and user.id != current_user_id:
+                users.append(self._to_public_user(user))
+        return users

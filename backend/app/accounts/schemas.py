@@ -13,6 +13,7 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     confirm_password: str
+    role: str = "STUDENT"
 
 # Verify request schema
 class VerifyRequest(BaseModel):
@@ -31,8 +32,18 @@ class PublicUser(BaseModel):
     username: str
     email: str
     verified: bool
+    role: str
+    bio: str = ""
+    tags: list[str] = []
     created_at: datetime
     updated_at: datetime
+
+
+# Update profile request schema
+class UpdateProfileRequest(BaseModel):
+    user_id: str
+    bio: str
+    tags: list[str]
 
 # Register response schema
 class RegisterResponse(BaseModel):

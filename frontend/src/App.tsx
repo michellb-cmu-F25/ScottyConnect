@@ -3,6 +3,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import VerificationPage from './pages/VerificationPage'
 import MainPage from './pages/MainPage'
+import NetworkingPage from './pages/NetworkingPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 
 function App() {
@@ -13,7 +14,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify" element={<VerificationPage />} />
         <Route path="/mainpage" element={<MainPage />} />
-        <Route path="/networking" element={<PlaceholderPage title="Networking" />} />
+        <Route path="/networking" element={<NetworkingPage />} />
         <Route path="/feedback" element={<PlaceholderPage title="Feedback" />} />
         <Route path="/publish-event" element={<PlaceholderPage title="Publish new event" />} />
         <Route path="/attendance" element={<PlaceholderPage title="Attendance" />} />
