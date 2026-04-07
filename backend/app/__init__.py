@@ -10,6 +10,8 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from dotenv import load_dotenv
 
 from app.accounts.service import ACCOUNT_SERVICE_EXTENSION_KEY, AccountService
+from app.lifecycle.service import LIFECYCLE_SERVICE_EXTENSION_KEY, LifecycleService
+
 
 
 
@@ -36,7 +38,7 @@ def create_app():
     # app.extensions[ATTENDANCE_SERVICE_EXTENSION_KEY] = AttendanceService()
     # app.extensions[NOTIFICATION_SERVICE_EXTENSION_KEY] = NotificationService()
     # app.extensions[FEEDBACK_SERVICE_EXTENSION_KEY] = FeedbackService()
-    # app.extensions[LIFECYCLE_SERVICE_EXTENSION_KEY] = LifecycleService()
+    app.extensions[LIFECYCLE_SERVICE_EXTENSION_KEY] = LifecycleService()
     # app.extensions[NETWORKING_SERVICE_EXTENSION_KEY] = NetworkingService()
     # app.extensions[TASKS_SERVICE_EXTENSION_KEY] = TasksService()
 
