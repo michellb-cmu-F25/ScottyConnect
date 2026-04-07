@@ -11,6 +11,7 @@ from app.accounts.schemas import (
     RegisterResponse,
     VerifyRequest,
     VerifyResponse,
+    UpdateProfileRequest,
 )
 from app.accounts.service import get_account_service
 from app.utils.doc import doc
@@ -60,3 +61,31 @@ def verify(req: VerifyRequest):
 def login(req: LoginRequest):
     resp = get_account_service().login(req)
     return jsonify(resp.model_dump(mode="json")), resp.code
+
+
+@accounts.route("/profile", methods=["PUT"])
+@validate(UpdateProfileRequest)
+@doc(
+    request=UpdateProfileRequest,
+    description="Update user profile (bio and tags)",
+    tags=["accounts"],
+    success_status=200,
+)
+def update_profile(req: UpdateProfileRequest):
+    success = get_account_service().update_profile(req)
+    if success:
+        return jsonify({"message": "Profile updated successfully"}), 200
+    return jsonify({"message": "Failed to update profile"}), 400
+
+
+@accounts.route("/discover", methods=["GET"])
+@doc(
+    description="Discover other users for networking",
+    tags=["accounts"],
+    success_status=200,
+)
+def discover():
+    # In a real app, we'd get current_user_id from JWT
+    users = get_account_service().get_discover_users()
+    data = [u.model_dump(mode="json") for u in users]
+    return jsonify({"users": data}), 200

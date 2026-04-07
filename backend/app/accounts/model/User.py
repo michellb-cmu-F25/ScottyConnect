@@ -12,6 +12,10 @@ class User(BaseModel):
     password: str
     verification_code: str
     verified: bool = False
+    role: str = "STUDENT"  # STUDENT or ALUMNI
+    bio: str = ""
+    tags: list[str] = []
+    
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
