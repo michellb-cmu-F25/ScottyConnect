@@ -41,11 +41,17 @@ class NetworkingMediator(ICoffeeChatMediator):
             if count >= 3:
                 return False
 
-        # 2. Availability Check (Ensure sender is available at this time)
-        if timeslot not in sender.availability:
+        # 2. Availability Check (Ensure sender is free)
+        sender_busy = self._dao.get_occupied_slots(sender.user_id)
+        if timeslot in sender_busy:
+            return False
+            
+        # 3. Availability Check (Ensure receiver is free)
+        receiver_busy = self._dao.get_occupied_slots(receiver_id)
+        if timeslot in receiver_busy:
             return False
 
-        # 3. Persistence
+        # 4. Persistence
         appointment = Appointment(
             sender_id=sender.user_id,
             receiver_id=receiver_id,
@@ -54,7 +60,7 @@ class NetworkingMediator(ICoffeeChatMediator):
         )
         saved = self._dao.insert(appointment)
 
-        # 4. Notification via Message Bus
+        # 5. Notification via Message Bus
         if saved.id:
             MessageBus.publish(Message(
                 MessageType.COFFEE_CHAT_REQUESTED,

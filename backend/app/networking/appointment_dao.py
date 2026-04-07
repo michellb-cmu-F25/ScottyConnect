@@ -69,6 +69,14 @@ class AppointmentDAO:
         }).sort("created_at", -1)
         return [self._to_appointment(doc) for doc in cursor if doc]
 
+    def get_occupied_slots(self, user_id: str) -> List[str]:
+        """Returns a list of timeslot strings for all non-declined/non-cancelled meetings."""
+        cursor = self._col.find({
+            "$or": [{"sender_id": user_id}, {"receiver_id": user_id}],
+            "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]}
+        }, {"timeslot": 1})
+        return [doc["timeslot"] for doc in cursor if "timeslot" in doc]
+
     @staticmethod
     def _to_appointment(doc: dict | None) -> Optional[Appointment]:
         """Helper to convert MongoDB document to Appointment Pydantic model."""

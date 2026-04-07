@@ -13,6 +13,7 @@ class AppointmentStatus(str, Enum):
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     DECLINED = "DECLINED"
+    CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"
 
 

@@ -8,6 +8,8 @@ from flask import Blueprint, jsonify
 from app.networking.schemas import (
     AppointmentListResponse,
     AppointmentResponse,
+    BusySlotsResponse,
+    CancelRequest,
     InviteRequest,
     RespondRequest,
 )
@@ -50,6 +52,22 @@ def respond_invite(req: RespondRequest):
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 
+@networking.route("/cancel", methods=["POST"])
+@validate(CancelRequest)
+@doc(
+    request=CancelRequest,
+    response=AppointmentResponse,
+    description="Cancel a sent coffee chat invitation",
+    tags=["networking"],
+    success_status=200,
+)
+def cancel_invite(req: CancelRequest):
+    """Endpoint to cancel a pending invitation sent by the user."""
+    service = get_networking_service()
+    resp = service.cancel_invite(req.invite_id, req.sender_id)
+    return jsonify(resp.model_dump(mode="json")), resp.code
+
+
 @networking.route("/appointments/<user_id>", methods=["GET"])
 @doc(
     response=AppointmentListResponse,
@@ -60,7 +78,19 @@ def respond_invite(req: RespondRequest):
 def get_appointments(user_id: str):
     """Endpoint to retrieve the appointment history for a user."""
     service = get_networking_service()
-    appointments = service.get_appointments(user_id)
-    # Wrap in list of dicts for serialization
-    data = [a.model_dump(mode="json") for a in appointments]
+    data = service.get_appointments(user_id)
     return jsonify({"appointments": data, "code": 200}), 200
+
+
+@networking.route("/busy-slots/<user_id>", methods=["GET"])
+@doc(
+    response=BusySlotsResponse,
+    description="Get all occupied timeslots for a user",
+    tags=["networking"],
+    success_status=200,
+)
+def get_busy_slots(user_id: str):
+    """Endpoint to retrieve a user's busy slots for conflict prevention."""
+    service = get_networking_service()
+    resp = service.get_busy_slots(user_id)
+    return jsonify(resp.model_dump(mode="json")), resp.code

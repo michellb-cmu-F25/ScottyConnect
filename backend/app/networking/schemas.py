@@ -22,6 +22,12 @@ class RespondRequest(BaseModel):
     accept: bool
 
 
+class CancelRequest(BaseModel):
+    """Schema for cancelling a coffee chat invitation."""
+    invite_id: str
+    sender_id: str
+
+
 class AppointmentResponse(BaseModel):
     """Standardized response for appointment-related operations."""
     message: str
@@ -32,4 +38,10 @@ class AppointmentResponse(BaseModel):
 class AppointmentListResponse(BaseModel):
     """Standardized response for listing appointments."""
     appointments: List[dict]
+    code: int
+
+
+class BusySlotsResponse(BaseModel):
+    """Response containing occupied timeslots for a user."""
+    busy_slots: List[str]
     code: int

@@ -21,7 +21,6 @@ class Participant(BaseModel, ABC):
     """Abstract base class for all coffee chat participants."""
     user_id: str
     username: str
-    availability: List[str] = []
     
     # Injected mediator (private attribute to avoid Pydantic validation issues)
     _mediator: ICoffeeChatMediator | None = None
@@ -52,3 +51,18 @@ class AlumniAttendee(Participant):
     """Concrete Participant representing an Alumni."""
     def get_role(self) -> str:
         return "ALUMNI"
+
+
+class ParticipantFactory:
+    """Factory to create participants based on system roles."""
+    
+    _ROLE_MAP = {
+        "STUDENT": StudentAttendee,
+        "ALUMNI": AlumniAttendee
+    }
+
+    @staticmethod
+    def create(user_id: str, username: str, role: str) -> Participant:
+        """Creates the appropriate Participant subclass for a given role."""
+        cls = ParticipantFactory._ROLE_MAP.get(role, AlumniAttendee)
+        return cls(user_id=user_id, username=username)
