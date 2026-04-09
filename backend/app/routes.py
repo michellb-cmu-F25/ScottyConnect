@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, render_template_string
 
+from app.recommendation.routes import recommendation
 from app.utils.openapi_generator import generate_openapi_spec
 
 main = Blueprint("main", __name__)
@@ -49,5 +50,6 @@ def docs():
 # Subroutes for each service
 from app.accounts.routes import accounts
 main.register_blueprint(accounts, url_prefix="/api/accounts")
+main.register_blueprint(recommendation, url_prefix="/api/recommendation")
 
 # TODO: Add subroutes for each service here.

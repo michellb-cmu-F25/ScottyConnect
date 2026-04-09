@@ -10,6 +10,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from dotenv import load_dotenv
 
 from app.accounts.service import ACCOUNT_SERVICE_EXTENSION_KEY, AccountService
+from app.recommendation.service import RECOMMENDATION_SERVICE_EXTENSION_KEY, RecommendationService
 
 
 
@@ -33,6 +34,7 @@ def create_app():
 
     # Register each service as an extension for subscriber-publisher pattern
     app.extensions[ACCOUNT_SERVICE_EXTENSION_KEY] = AccountService()
+    app.extensions[RECOMMENDATION_SERVICE_EXTENSION_KEY] = RecommendationService()
     # app.extensions[ATTENDANCE_SERVICE_EXTENSION_KEY] = AttendanceService()
     # app.extensions[NOTIFICATION_SERVICE_EXTENSION_KEY] = NotificationService()
     # app.extensions[FEEDBACK_SERVICE_EXTENSION_KEY] = FeedbackService()
