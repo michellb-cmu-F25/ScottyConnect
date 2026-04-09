@@ -7,6 +7,8 @@ import NetworkingPage from './pages/NetworkingPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 import CreateEventPage from './pages/CreateEventPage'
 import MyEventsPage from './pages/MyEventsPage'
+import EventConfirmationPage from './pages/EventConfirmationPage'
+import EditEventPage from './pages/EditEventPage'
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
         <Route path="/publish-event" element={<CreateEventPage />} />
         <Route path="/attendance" element={<PlaceholderPage title="Attendance" />} />
         <Route path="/my-events" element={<MyEventsPage />} />
+        <Route path="/events/:id/edit" element={<EditEventPage />} />
+        <Route path="/event-published" element={<EventConfirmationPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

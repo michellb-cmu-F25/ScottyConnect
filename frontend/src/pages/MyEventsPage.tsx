@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { loadEvents, EVENTS_STORAGE_KEY, type StoredEvent } from './CreateEventPage'
+import { Link, useNavigate } from 'react-router-dom'
+import { loadEvents, deleteEvent, EVENTS_STORAGE_KEY, type StoredEvent } from './CreateEventPage'
 import StorageUtil from '../common/StorageUtil'
 import '../styles/MyEvents.css'
 
@@ -81,8 +81,8 @@ function getActions(ev: StoredEvent): { label: string; className: string; action
   switch (ev.status) {
     case 'draft':
       return [
-        { label: 'Publish', className: 'me-action-publish', action: 'publish' },
-        { label: 'Cancel', className: 'me-action-danger', action: 'cancel' },
+        { label: 'Edit', className: 'me-action-secondary', action: 'edit' },
+        { label: 'Delete', className: 'me-action-danger', action: 'delete' },
       ]
     case 'published':
       return [
@@ -106,9 +106,11 @@ function transitionEvent(eventId: string, newStatus: StoredEvent['status']) {
 }
 
 export default function MyEventsPage() {
+  const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('created')
   const [, setTick] = useState(0)
   const rerender = () => setTick((t) => t + 1)
+  const [deleteTarget, setDeleteTarget] = useState<StoredEvent | null>(null)
 
   const user = StorageUtil.getUser()
   const createdEvents = loadEvents()
@@ -118,13 +120,27 @@ export default function MyEventsPage() {
     .concat(loadEvents().filter((e) => userRegIds.has(e.id) && e.ownerId !== (user.id ?? 'anonymous')))
 
   function handleAction(ev: StoredEvent, action: string) {
-    if (action === 'publish') transitionEvent(ev.id, 'published')
-    else if (action === 'end') transitionEvent(ev.id, 'ended')
+    if (action === 'edit') {
+      navigate(`/events/${ev.id}/edit`)
+      return
+    }
+    if (action === 'delete') {
+      setDeleteTarget(ev)
+      return
+    }
+    if (action === 'end') transitionEvent(ev.id, 'ended')
     else if (action === 'cancel') transitionEvent(ev.id, 'cancelled')
     else if (action === 'unregister') {
       const updated = loadRegistrations().filter((r) => !(r.eventId === ev.id && r.userId === (user.id ?? 'anonymous')))
       saveRegistrations(updated)
     }
+    rerender()
+  }
+
+  function confirmDelete() {
+    if (!deleteTarget) return
+    deleteEvent(deleteTarget.id)
+    setDeleteTarget(null)
     rerender()
   }
 
@@ -254,6 +270,25 @@ export default function MyEventsPage() {
       <footer className="me-footer">
         <p>ScottyConnect · Carnegie Mellon University</p>
       </footer>
+
+      {deleteTarget && (
+        <div className="me-modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="me-modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="me-modal-title">Delete Draft?</h2>
+            <p className="me-modal-message">
+              Are you sure you want to delete "{deleteTarget.title}"? This action cannot be undone.
+            </p>
+            <div className="me-modal-actions">
+              <button className="me-modal-btn me-modal-btn-danger" onClick={confirmDelete}>
+                Delete
+              </button>
+              <button className="me-modal-btn me-modal-btn-secondary" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
