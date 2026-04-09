@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
 import '../styles/CreateEvent.css'
 
-interface EventFormData {
+export interface EventFormData {
   title: string
   description: string
   date: string
@@ -29,6 +29,23 @@ function saveEvent(event: StoredEvent) {
   localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events))
 }
 
+function updateEvent(updated: StoredEvent) {
+  const events = loadEvents()
+  const idx = events.findIndex((e) => e.id === updated.id)
+  if (idx === -1) return
+  events[idx] = updated
+  localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events))
+}
+
+function deleteEvent(eventId: string) {
+  const events = loadEvents().filter((e) => e.id !== eventId)
+  localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events))
+}
+
+function findEvent(eventId: string): StoredEvent | undefined {
+  return loadEvents().find((e) => e.id === eventId)
+}
+
 export interface StoredEvent {
   id: string
   title: string
@@ -43,20 +60,44 @@ export interface StoredEvent {
   createdAt: string
 }
 
-export { EVENTS_STORAGE_KEY, loadEvents }
+export { EVENTS_STORAGE_KEY, loadEvents, updateEvent, deleteEvent, findEvent }
 
-export default function CreateEventPage() {
+const EMPTY_FORM: EventFormData = {
+  title: '',
+  description: '',
+  date: '',
+  startTime: '',
+  endTime: '',
+  location: '',
+  capacity: '',
+}
+
+export function storedToForm(ev: StoredEvent): EventFormData {
+  return {
+    title: ev.title,
+    description: ev.description,
+    date: ev.date,
+    startTime: ev.startTime,
+    endTime: ev.endTime,
+    location: ev.location,
+    capacity: ev.capacity != null ? String(ev.capacity) : '',
+  }
+}
+
+interface EventFormProps {
+  initialData?: EventFormData
+  pageTitle: string
+  pageSubtitle: string
+  backTo: string
+  backLabel: string
+  onSave: (form: EventFormData, status: StoredEvent['status']) => void
+}
+
+export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLabel, onSave }: EventFormProps) {
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
-  const [form, setForm] = useState<EventFormData>({
-    title: '',
-    description: '',
-    date: '',
-    startTime: '',
-    endTime: '',
-    location: '',
-    capacity: '',
-  })
+  const [showDraftModal, setShowDraftModal] = useState(false)
+  const [form, setForm] = useState<EventFormData>(initialData ?? EMPTY_FORM)
 
   function update(field: keyof EventFormData, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -70,56 +111,42 @@ export default function CreateEventPage() {
     form.endTime !== '' &&
     form.location.trim() !== ''
 
-  async function handleSubmit(status: StoredEvent['status']) {
+  function handleSubmit(status: StoredEvent['status']) {
     if (!isValid) return
     setSubmitting(true)
-
-    const user = StorageUtil.getUser()
-    const event: StoredEvent = {
-      id: crypto.randomUUID(),
-      title: form.title.trim(),
-      description: form.description.trim(),
-      date: form.date,
-      startTime: form.startTime,
-      endTime: form.endTime,
-      location: form.location.trim(),
-      capacity: form.capacity ? parseInt(form.capacity, 10) : null,
-      status,
-      ownerId: user.id ?? 'anonymous',
-      createdAt: new Date().toISOString(),
-    }
-
-    saveEvent(event)
+    onSave(form, status)
     setSubmitting(false)
-    navigate('/mainpage')
+    if (status === 'draft') {
+      setShowDraftModal(true)
+    }
   }
 
   function onFormSubmit(e: FormEvent) {
     e.preventDefault()
-    handleSubmit('published')
+    if (!isValid) return
+    setSubmitting(true)
+    onSave(form, 'published')
+    setSubmitting(false)
   }
 
   return (
     <div className="create-event-page">
       <header className="create-event-header">
         <div className="create-event-header-inner">
-          <Link to="/mainpage" className="create-event-back">
+          <Link to={backTo} className="create-event-back">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
-            Back to home
+            {backLabel}
           </Link>
         </div>
       </header>
 
       <main className="create-event-content">
-        <h1 className="create-event-title">Create new event</h1>
-        <p className="create-event-subtitle">
-          Fill in the details below to create a new event for the ScottyConnect community.
-        </p>
+        <h1 className="create-event-title">{pageTitle}</h1>
+        <p className="create-event-subtitle">{pageSubtitle}</p>
 
         <form className="create-event-form" onSubmit={onFormSubmit}>
-          {/* Basic info */}
           <div className="create-event-card">
             <h2 className="create-event-card-title">Event details</h2>
             <div className="create-event-fields">
@@ -137,7 +164,6 @@ export default function CreateEventPage() {
                   required
                 />
               </div>
-
               <div className="create-event-field">
                 <label className="create-event-label" htmlFor="ev-desc">
                   Description <span className="required">*</span>
@@ -151,7 +177,6 @@ export default function CreateEventPage() {
                   required
                 />
               </div>
-
               <div className="create-event-field">
                 <label className="create-event-label" htmlFor="ev-location">
                   Location <span className="required">*</span>
@@ -169,7 +194,6 @@ export default function CreateEventPage() {
             </div>
           </div>
 
-          {/* Schedule */}
           <div className="create-event-card">
             <h2 className="create-event-card-title">Schedule</h2>
             <div className="create-event-fields">
@@ -186,7 +210,6 @@ export default function CreateEventPage() {
                   required
                 />
               </div>
-
               <div className="create-event-row">
                 <div className="create-event-field">
                   <label className="create-event-label" htmlFor="ev-start">
@@ -218,7 +241,6 @@ export default function CreateEventPage() {
             </div>
           </div>
 
-          {/* Capacity */}
           <div className="create-event-card">
             <h2 className="create-event-card-title">Capacity</h2>
             <div className="create-event-fields">
@@ -239,7 +261,6 @@ export default function CreateEventPage() {
             </div>
           </div>
 
-          {/* Actions */}
           <div className="create-event-actions">
             <button
               type="submit"
@@ -259,7 +280,7 @@ export default function CreateEventPage() {
             <button
               type="button"
               className="create-event-btn create-event-btn-cancel"
-              onClick={() => navigate('/mainpage')}
+              onClick={() => navigate(backTo)}
             >
               Cancel
             </button>
@@ -270,6 +291,72 @@ export default function CreateEventPage() {
       <footer className="create-event-footer">
         <p>ScottyConnect · Carnegie Mellon University</p>
       </footer>
+
+      {showDraftModal && (
+        <div className="draft-modal-overlay" onClick={() => setShowDraftModal(false)}>
+          <div className="draft-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="draft-modal-icon" aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <path d="M22 4 12 14.01l-3-3" />
+              </svg>
+            </div>
+            <h2 className="draft-modal-title">Draft Saved Successfully</h2>
+            <p className="draft-modal-message">
+              Your event has been saved as a draft. You can go to My Events to view and edit it later.
+            </p>
+            <div className="draft-modal-actions">
+              <button
+                className="draft-modal-btn draft-modal-btn-primary"
+                onClick={() => navigate('/my-events')}
+              >
+                Go to My Events
+              </button>
+              <button
+                className="draft-modal-btn draft-modal-btn-secondary"
+                onClick={() => navigate('/mainpage')}
+              >
+                Back to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+export default function CreateEventPage() {
+  const navigate = useNavigate()
+
+  function handleSave(form: EventFormData, status: StoredEvent['status']) {
+    const user = StorageUtil.getUser()
+    const event: StoredEvent = {
+      id: crypto.randomUUID(),
+      title: form.title.trim(),
+      description: form.description.trim(),
+      date: form.date,
+      startTime: form.startTime,
+      endTime: form.endTime,
+      location: form.location.trim(),
+      capacity: form.capacity ? parseInt(form.capacity, 10) : null,
+      status,
+      ownerId: user.id ?? 'anonymous',
+      createdAt: new Date().toISOString(),
+    }
+    saveEvent(event)
+    if (status === 'published') {
+      navigate('/event-published', { state: { eventId: event.id } })
+    }
+  }
+
+  return (
+    <EventForm
+      pageTitle="Create new event"
+      pageSubtitle="Fill in the details below to create a new event for the ScottyConnect community."
+      backTo="/mainpage"
+      backLabel="Back to home"
+      onSave={handleSave}
+    />
   )
 }

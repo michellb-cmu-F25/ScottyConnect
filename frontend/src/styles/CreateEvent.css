@@ -261,3 +261,120 @@
     order: 3;
   }
 }
+
+/* Draft saved modal */
+.draft-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.draft-modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: draft-modal-in 0.2s ease-out;
+}
+
+@keyframes draft-modal-in {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.draft-modal-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e6f9ed;
+  color: #1a7f37;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.draft-modal-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.draft-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--black);
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.draft-modal-message {
+  font-size: 0.9375rem;
+  color: var(--black);
+  line-height: 1.55;
+  margin: 0 0 24px;
+}
+
+.draft-modal-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.draft-modal-btn {
+  flex: 1;
+  padding: 10px 18px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: var(--sans);
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.draft-modal-btn:active {
+  transform: scale(0.98);
+}
+
+.draft-modal-btn-primary {
+  background: linear-gradient(135deg, var(--carnegie-red) 0%, #9e0f26 100%);
+  color: var(--white);
+  box-shadow: 0 2px 8px rgba(196, 18, 48, 0.3);
+}
+
+.draft-modal-btn-primary:hover {
+  background: linear-gradient(135deg, var(--carnegie-red-hover) 0%, #8a0d22 100%);
+}
+
+.draft-modal-btn-secondary {
+  background: var(--white);
+  color: var(--text-primary);
+  border: 1px solid var(--steel-gray);
+}
+
+.draft-modal-btn-secondary:hover {
+  border-color: var(--carnegie-red);
+  color: var(--carnegie-red);
+}
+
+@media (max-width: 480px) {
+  .draft-modal {
+    padding: 24px 20px;
+  }
+
+  .draft-modal-actions {
+    flex-direction: column;
+  }
+}
