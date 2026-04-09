@@ -55,6 +55,16 @@
   padding: 32px 24px 48px;
 }
 
+.me-inline-error {
+  margin: 0 0 20px;
+  padding: 10px 14px;
+  font-size: 0.9375rem;
+  color: var(--carnegie-red, #c41230);
+  background: rgba(196, 18, 48, 0.08);
+  border: 1px solid rgba(196, 18, 48, 0.25);
+  border-radius: 8px;
+}
+
 .me-title {
   font-size: clamp(1.5rem, 3.5vw, 1.75rem);
   font-weight: 700;

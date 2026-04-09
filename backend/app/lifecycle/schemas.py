@@ -2,41 +2,58 @@
 """
 Schemas for the Lifecycle service.
 """
+from typing import Literal
+
 from pydantic import BaseModel
 
 
-# Create event request schema
 class CreateEventRequest(BaseModel):
     title: str
     description: str
+    date: str | None = None
+    start_time: str | None = None
+    end_time: str | None = None
+    location: str | None = None
+    capacity: int | None = None
+    status: Literal["draft", "published"] = "draft"
 
-# Update event request schema
+
 class UpdateEventRequest(BaseModel):
     title: str | None = None
     description: str | None = None
+    date: str | None = None
+    start_time: str | None = None
+    end_time: str | None = None
+    location: str | None = None
+    capacity: int | None = None
+    status: Literal["draft", "published"] | None = None
 
-# Transition request schema
+
 class TransitionRequest(BaseModel):
     target_status: str
 
 
-# Public event schema (used for response)
 class PublicEvent(BaseModel):
     id: str | None
     title: str
     description: str
+    date: str | None
+    start_time: str | None
+    end_time: str | None
+    location: str | None
+    capacity: int | None
     owner_id: str
     status: str
     created_at: str
     updated_at: str
 
-# Event response schema
+
 class EventResponse(BaseModel):
     message: str
     event: PublicEvent | None
     code: int
 
-# Event list response schema
+
 class EventListResponse(BaseModel):
     message: str
     events: list[PublicEvent]

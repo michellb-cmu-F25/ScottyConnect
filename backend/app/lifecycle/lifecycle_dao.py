@@ -35,6 +35,26 @@ class LifecycleDAO:
         )
         return self.find_by_id(event_id)
 
+    def update_fields(self, event_id: str, updates: dict) -> Event | None:
+        if not updates:
+            return self.find_by_id(event_id)
+        now = datetime.now(timezone.utc)
+        payload = {**updates, "updated_at": now}
+        self._col.update_one({"_id": ObjectId(event_id)}, {"$set": payload})
+        return self.find_by_id(event_id)
+
+    def find_by_owner(self, owner_id: str) -> list[Event]:
+        cursor = self._col.find({"owner_id": owner_id}).sort("created_at", -1)
+        return [e for doc in cursor if (e := self._to_event(doc)) is not None]
+
+    def find_by_status(self, status: str) -> list[Event]:
+        cursor = self._col.find({"status": status}).sort("created_at", -1)
+        return [e for doc in cursor if (e := self._to_event(doc)) is not None]
+
+    def delete_by_id(self, event_id: str) -> bool:
+        result = self._col.delete_one({"_id": ObjectId(event_id)})
+        return result.deleted_count > 0
+
     @staticmethod
     def _to_event(doc: dict | None) -> Event | None:
         if doc is None:

@@ -1,28 +1,31 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { loadEvents, type StoredEvent } from './CreateEventPage'
+import StorageUtil from '../common/StorageUtil'
+import { listPublishedEvents, listMyEvents, apiEventToStored } from '../services/eventApi'
+import type { StoredEvent } from '../types/event'
 import '../styles/Main.css'
 
-const MOCK_ACTIVE_EVENTS = [
-  {
-    id: '1',
-    title: 'CMU-SV Carnival',
-    date: 'Apr 12, 2026 · 5:00 PM',
-    location: 'CMUSV',
-    spots: '42 / 80',
-  },
-  {
-    id: '2',
-    title: 'ECE Happy Hour',
-    date: 'Apr 18, 2026 · 2:00 PM',
-    location: 'The Ameswell Hotel',
-    spots: 'Open',
-  }
-] as const
+/** Convert HH:mm (24h) to h:mm AM/PM */
+function formatTime12h(hhmm: string): string {
+  const parts = hhmm.split(':')
+  if (parts.length < 2) return hhmm
+  const hour = parseInt(parts[0], 10)
+  const min = parts[1]
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const h12 = hour % 12 || 12
+  return `${h12}:${min} ${ampm}`
+}
 
 function formatEventDate(ev: StoredEvent): string {
   const d = new Date(ev.date + 'T00:00:00')
   const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  if (ev.startTime) return `${dateStr} · ${ev.startTime}`
+  if (ev.startTime) {
+    const startLabel = formatTime12h(ev.startTime)
+    if (ev.endTime) {
+      return `${dateStr} · ${startLabel} – ${formatTime12h(ev.endTime)}`
+    }
+    return `${dateStr} · ${startLabel}`
+  }
   return dateStr
 }
 
@@ -32,8 +35,47 @@ function formatSpots(ev: StoredEvent): string {
 }
 
 export default function MainPage() {
-  const userEvents = loadEvents()
-  const publishedUserEvents = userEvents.filter((e) => e.status === 'published')
+  const [publishedEvents, setPublishedEvents] = useState<StoredEvent[]>([])
+  const [loadError, setLoadError] = useState('')
+  const [myCreatedCount, setMyCreatedCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const list = await listPublishedEvents()
+        if (!cancelled) {
+          setPublishedEvents(list.map(apiEventToStored))
+          setLoadError('')
+        }
+      } catch (e) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Failed to load events')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!StorageUtil.getToken()) {
+      setMyCreatedCount(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const mine = await listMyEvents()
+        if (!cancelled) setMyCreatedCount(mine.length)
+      } catch {
+        if (!cancelled) setMyCreatedCount(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <div className="main-page">
       <header className="main-header">
@@ -49,7 +91,7 @@ export default function MainPage() {
             <span className="main-brand-text">ScottyConnect</span>
           </Link>
           <Link to="/my-events" className="main-nav-link">
-            My Events{userEvents.length > 0 && ` (${userEvents.length})`}
+            My Events{myCreatedCount != null && myCreatedCount > 0 && ` (${myCreatedCount})`}
           </Link>
         </div>
       </header>
@@ -63,8 +105,9 @@ export default function MainPage() {
             </h2>
             <p className="main-section-desc">Open registrations and upcoming sessions</p>
           </div>
+          {loadError && <p className="main-section-desc" role="alert">{loadError}</p>}
           <ul className="main-event-list">
-            {publishedUserEvents.map((ev) => (
+            {publishedEvents.map((ev) => (
               <li key={ev.id}>
                 <article className="main-event-card">
                   <div className="main-event-card-body">
@@ -78,21 +121,10 @@ export default function MainPage() {
                 </article>
               </li>
             ))}
-            {MOCK_ACTIVE_EVENTS.map((ev) => (
-              <li key={ev.id}>
-                <article className="main-event-card">
-                  <div className="main-event-card-body">
-                    <h3 className="main-event-title">{ev.title}</h3>
-                    <p className="main-event-meta">{ev.date}</p>
-                    <p className="main-event-meta">{ev.location}</p>
-                  </div>
-                  <div className="main-event-card-aside">
-                    <span className="main-event-badge">{ev.spots}</span>
-                  </div>
-                </article>
-              </li>
-            ))}
           </ul>
+          {publishedEvents.length === 0 && !loadError && (
+            <p className="main-section-desc">No published events yet.</p>
+          )}
         </section>
 
         <section className="main-section" aria-labelledby="actions-heading">
@@ -139,7 +171,7 @@ export default function MainPage() {
                 <span className="main-action-hint">Reviews and suggestions</span>
               </Link>
             </li>
-            
+
             <li>
               <Link to="/attendance" className="main-action-card">
                 <span className="main-action-icon" aria-hidden>

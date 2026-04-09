@@ -2,14 +2,12 @@
 
 from app.lifecycle.states.base import EventState
 from app.lifecycle.states.draft import DraftState
-from app.lifecycle.states.ready import ReadyState
 from app.lifecycle.states.published import PublishedState
 from app.lifecycle.states.ended import EndedState
 from app.lifecycle.states.cancelled import CancelledState
 
 _STATE_REGISTRY: dict[str, EventState] = {
     "draft": DraftState(),
-    "ready": ReadyState(),
     "published": PublishedState(),
     "ended": EndedState(),
     "cancelled": CancelledState(),
