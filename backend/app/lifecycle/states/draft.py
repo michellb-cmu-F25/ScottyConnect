@@ -10,7 +10,7 @@ class DraftState(EventState):
         return "draft"
 
     def allowed_transitions(self) -> list[str]:
-        return ["ready"]
+        return ["published"]
 
     def validate_create_task(self, is_owner: bool) -> None:
         if not is_owner:

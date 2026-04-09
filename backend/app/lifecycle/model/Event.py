@@ -9,6 +9,11 @@ class Event(BaseModel):
     id: str | None = None
     title: str
     description: str
+    date: str | None = None
+    start_time: str | None = None
+    end_time: str | None = None
+    location: str | None = None
+    capacity: int | None = None
     owner_id: str
     status: str = "draft"
     created_at: datetime = Field(

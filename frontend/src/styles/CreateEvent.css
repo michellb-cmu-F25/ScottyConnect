@@ -369,6 +369,39 @@
   color: var(--carnegie-red);
 }
 
+.create-event-error {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  background: rgba(196, 18, 48, 0.08);
+  border-bottom: 1px solid rgba(196, 18, 48, 0.25);
+  color: var(--carnegie-red);
+  font-size: 0.9375rem;
+}
+
+.create-event-schedule-hint {
+  margin: 12px 0 0;
+  font-size: 0.875rem;
+  color: var(--carnegie-red, #c41230);
+}
+
+.create-event-schedule-warnings {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-event-schedule-warn {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #b45309;
+  background: rgba(180, 83, 9, 0.08);
+  border-radius: 6px;
+  padding: 8px 10px;
+  border: 1px solid rgba(180, 83, 9, 0.25);
+}
+
 @media (max-width: 480px) {
   .draft-modal {
     padding: 24px 20px;

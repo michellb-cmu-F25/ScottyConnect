@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation, Navigate } from 'react-router-dom'
-import { loadEvents, type StoredEvent } from './CreateEventPage'
+import { getEvent, apiEventToStored } from '../services/eventApi'
+import type { StoredEvent } from '../types/event'
 import '../styles/EventConfirmation.css'
 
 function formatDate(ev: StoredEvent): string {
@@ -24,11 +26,38 @@ function formatDate(ev: StoredEvent): string {
 export default function EventConfirmationPage() {
   const location = useLocation()
   const eventId = (location.state as { eventId?: string })?.eventId
+  const [event, setEvent] = useState<StoredEvent | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    if (!eventId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const ev = await getEvent(eventId)
+        if (!cancelled) setEvent(apiEventToStored(ev))
+      } catch {
+        if (!cancelled) setFailed(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [eventId])
 
   if (!eventId) return <Navigate to="/mainpage" replace />
 
-  const event = loadEvents().find((e) => e.id === eventId)
-  if (!event) return <Navigate to="/mainpage" replace />
+  if (failed) return <Navigate to="/mainpage" replace />
+
+  if (!event) {
+    return (
+      <div className="conf-page">
+        <main className="conf-content">
+          <p className="conf-message">Loading…</p>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="conf-page">

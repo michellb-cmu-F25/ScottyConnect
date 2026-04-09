@@ -1,15 +1,21 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { loadEvents, deleteEvent, EVENTS_STORAGE_KEY, type StoredEvent } from './CreateEventPage'
+import {
+  listMyEvents,
+  apiEventToStored,
+  deleteEventApi,
+  transitionEventApi,
+} from '../services/eventApi'
+import { loadEvents, type StoredEvent } from './CreateEventPage'
 import StorageUtil from '../common/StorageUtil'
 import '../styles/MyEvents.css'
 
 type Tab = 'created' | 'registered'
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  draft:     { label: 'Draft',     className: 'me-status-draft' },
+  draft: { label: 'Draft', className: 'me-status-draft' },
   published: { label: 'Published', className: 'me-status-published' },
-  ended:     { label: 'Ended',     className: 'me-status-ended' },
+  ended: { label: 'Ended', className: 'me-status-ended' },
   cancelled: { label: 'Cancelled', className: 'me-status-cancelled' },
 }
 
@@ -97,29 +103,48 @@ function getActions(ev: StoredEvent): { label: string; className: string; action
   }
 }
 
-function transitionEvent(eventId: string, newStatus: StoredEvent['status']) {
-  const events = loadEvents()
-  const idx = events.findIndex((e) => e.id === eventId)
-  if (idx === -1) return
-  events[idx].status = newStatus
-  localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events))
-}
-
 export default function MyEventsPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('created')
   const [, setTick] = useState(0)
   const rerender = () => setTick((t) => t + 1)
   const [deleteTarget, setDeleteTarget] = useState<StoredEvent | null>(null)
+  const [createdEvents, setCreatedEvents] = useState<StoredEvent[]>([])
+  const [createdLoading, setCreatedLoading] = useState(true)
+  const [createdError, setCreatedError] = useState('')
+  const [actionError, setActionError] = useState('')
+
+  const refreshCreated = useCallback(async () => {
+    if (!StorageUtil.getToken()) {
+      setCreatedEvents([])
+      setCreatedError('Sign in to see events you created.')
+      setCreatedLoading(false)
+      return
+    }
+    setCreatedLoading(true)
+    try {
+      const list = await listMyEvents()
+      setCreatedEvents(list.map(apiEventToStored))
+      setCreatedError('')
+    } catch (e) {
+      setCreatedError(e instanceof Error ? e.message : 'Failed to load events')
+      setCreatedEvents([])
+    } finally {
+      setCreatedLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    refreshCreated()
+  }, [refreshCreated])
 
   const user = StorageUtil.getUser()
-  const createdEvents = loadEvents()
   const registrations = loadRegistrations()
   const userRegIds = new Set(registrations.filter((r) => r.userId === (user.id ?? 'anonymous')).map((r) => r.eventId))
   const registeredEvents = MOCK_REGISTERED_EVENTS.filter(() => true)
     .concat(loadEvents().filter((e) => userRegIds.has(e.id) && e.ownerId !== (user.id ?? 'anonymous')))
 
-  function handleAction(ev: StoredEvent, action: string) {
+  async function handleAction(ev: StoredEvent, action: string) {
     if (action === 'edit') {
       navigate(`/events/${ev.id}/edit`)
       return
@@ -128,20 +153,43 @@ export default function MyEventsPage() {
       setDeleteTarget(ev)
       return
     }
-    if (action === 'end') transitionEvent(ev.id, 'ended')
-    else if (action === 'cancel') transitionEvent(ev.id, 'cancelled')
-    else if (action === 'unregister') {
+    if (action === 'end') {
+      setActionError('')
+      try {
+        await transitionEventApi(ev.id, 'ended')
+        await refreshCreated()
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : 'Failed to update event')
+      }
+      return
+    }
+    if (action === 'cancel') {
+      setActionError('')
+      try {
+        await transitionEventApi(ev.id, 'cancelled')
+        await refreshCreated()
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : 'Failed to update event')
+      }
+      return
+    }
+    if (action === 'unregister') {
       const updated = loadRegistrations().filter((r) => !(r.eventId === ev.id && r.userId === (user.id ?? 'anonymous')))
       saveRegistrations(updated)
     }
     rerender()
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!deleteTarget) return
-    deleteEvent(deleteTarget.id)
-    setDeleteTarget(null)
-    rerender()
+    setActionError('')
+    try {
+      await deleteEventApi(deleteTarget.id)
+      setDeleteTarget(null)
+      await refreshCreated()
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Failed to delete')
+    }
   }
 
   return (
@@ -158,6 +206,11 @@ export default function MyEventsPage() {
       </header>
 
       <main className="me-content">
+        {actionError && (
+          <div className="me-inline-error" role="alert">
+            {actionError}
+          </div>
+        )}
         <h1 className="me-title">My Events</h1>
         <p className="me-subtitle">Events you've created or registered for.</p>
 
@@ -166,7 +219,10 @@ export default function MyEventsPage() {
             role="tab"
             aria-selected={tab === 'created'}
             className={`me-tab ${tab === 'created' ? 'me-tab-active' : ''}`}
-            onClick={() => setTab('created')}
+            onClick={() => {
+              setActionError('')
+              setTab('created')
+            }}
           >
             Created ({createdEvents.length})
           </button>
@@ -174,7 +230,10 @@ export default function MyEventsPage() {
             role="tab"
             aria-selected={tab === 'registered'}
             className={`me-tab ${tab === 'registered' ? 'me-tab-active' : ''}`}
-            onClick={() => setTab('registered')}
+            onClick={() => {
+              setActionError('')
+              setTab('registered')
+            }}
           >
             Registered ({registeredEvents.length})
           </button>
@@ -182,12 +241,19 @@ export default function MyEventsPage() {
 
         {tab === 'created' && (
           <section className="me-section" aria-label="Created events">
-            {createdEvents.length === 0 ? (
+            {createdLoading && <p className="me-empty">Loading…</p>}
+            {!createdLoading && createdError && (
+              <div className="me-empty">
+                <p>{createdError}</p>
+              </div>
+            )}
+            {!createdLoading && !createdError && createdEvents.length === 0 && (
               <div className="me-empty">
                 <p>You haven't created any events yet.</p>
                 <Link to="/publish-event" className="me-empty-link">Create your first event</Link>
               </div>
-            ) : (
+            )}
+            {!createdLoading && !createdError && createdEvents.length > 0 && (
               <ul className="me-event-list">
                 {createdEvents.map((ev) => {
                   const sc = STATUS_CONFIG[ev.status] ?? FALLBACK_STATUS
