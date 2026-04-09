@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { loadEvents, type StoredEvent } from './CreateEventPage'
 import '../styles/Main.css'
 
 const MOCK_ACTIVE_EVENTS = [
@@ -18,7 +19,21 @@ const MOCK_ACTIVE_EVENTS = [
   }
 ] as const
 
+function formatEventDate(ev: StoredEvent): string {
+  const d = new Date(ev.date + 'T00:00:00')
+  const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  if (ev.startTime) return `${dateStr} · ${ev.startTime}`
+  return dateStr
+}
+
+function formatSpots(ev: StoredEvent): string {
+  if (ev.capacity) return `0 / ${ev.capacity}`
+  return 'Open'
+}
+
 export default function MainPage() {
+  const userEvents = loadEvents()
+  const publishedUserEvents = userEvents.filter((e) => e.status === 'published')
   return (
     <div className="main-page">
       <header className="main-header">
@@ -33,6 +48,9 @@ export default function MainPage() {
             />
             <span className="main-brand-text">ScottyConnect</span>
           </Link>
+          <Link to="/my-events" className="main-nav-link">
+            My Events{userEvents.length > 0 && ` (${userEvents.length})`}
+          </Link>
         </div>
       </header>
 
@@ -46,6 +64,20 @@ export default function MainPage() {
             <p className="main-section-desc">Open registrations and upcoming sessions</p>
           </div>
           <ul className="main-event-list">
+            {publishedUserEvents.map((ev) => (
+              <li key={ev.id}>
+                <article className="main-event-card">
+                  <div className="main-event-card-body">
+                    <h3 className="main-event-title">{ev.title}</h3>
+                    <p className="main-event-meta">{formatEventDate(ev)}</p>
+                    {ev.location && <p className="main-event-meta">{ev.location}</p>}
+                  </div>
+                  <div className="main-event-card-aside">
+                    <span className="main-event-badge">{formatSpots(ev)}</span>
+                  </div>
+                </article>
+              </li>
+            ))}
             {MOCK_ACTIVE_EVENTS.map((ev) => (
               <li key={ev.id}>
                 <article className="main-event-card">
@@ -125,14 +157,6 @@ export default function MainPage() {
           </ul>
         </section>
 
-        <section className="main-my-events-cta" aria-label="My events">
-          <Link to="/my-events" className="main-my-events-button">
-            <span className="main-my-events-button-title">My Events</span>
-            <span className="main-my-events-button-desc">
-              Events you participate in or organize
-            </span>
-          </Link>
-        </section>
       </main>
 
       <footer className="main-footer">
