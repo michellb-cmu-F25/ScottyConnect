@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [role, setRole] = useState('STUDENT')
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
@@ -40,6 +41,7 @@ export default function RegisterPage() {
           email: email.trim(),
           password,
           confirm_password: confirmPassword,
+          role,
         }),
       })
       const data = await res.json()
@@ -54,7 +56,7 @@ export default function RegisterPage() {
         return
       }
 
-      StorageUtil.setUser(data.user.username, data.user.email)
+      StorageUtil.setUser(data.user.username, data.user.email, data.user.id)
       navigate('/verify')
     } catch {
       setError('Unable to connect to the server.')
@@ -68,10 +70,10 @@ export default function RegisterPage() {
       <div className="auth-card">
         <div className="auth-brand">
           <div className="auth-brand-icon">
-              <img
-                src="/scotty_connect_square.png"
-                alt="ScottyConnect logo"
-              />
+            <img
+              src="/scotty_connect_square.png"
+              alt="ScottyConnect logo"
+            />
           </div>
           <h1>ScottyConnect</h1>
           <p>Create your account</p>
@@ -136,6 +138,18 @@ export default function RegisterPage() {
             {fieldErrors.confirmPassword && (
               <p className="field-error">{fieldErrors.confirmPassword}</p>
             )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="role">Role</label>
+            <select
+              id="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            >
+              <option value="STUDENT">Student</option>
+              <option value="ALUMNI">Alumni</option>
+            </select>
           </div>
 
           <button type="submit" className="btn-primary" disabled={loading}>

@@ -1,6 +1,14 @@
+"""
+Global Routes
+Main blueprint registration and health check endpoints.
+"""
+
 from flask import Blueprint, jsonify, render_template_string
 
+from app.accounts.routes import accounts
+from app.networking.routes import networking
 from app.recommendation.routes import recommendation
+
 from app.utils.openapi_generator import generate_openapi_spec
 
 main = Blueprint("main", __name__)
@@ -8,6 +16,7 @@ main = Blueprint("main", __name__)
 @main.route("/api/health")
 def health():
     return jsonify({"message": "ok"})
+
 
 @main.route("/api/sentry-debug")
 def sentry_debug():
@@ -47,9 +56,12 @@ def docs():
     )
 
 
-# Subroutes for each service
-from app.accounts.routes import accounts
+# Register sub-blueprints for each module
 main.register_blueprint(accounts, url_prefix="/api/accounts")
+main.register_blueprint(networking, url_prefix="/api/networking")
 main.register_blueprint(recommendation, url_prefix="/api/recommendation")
+
+from app.lifecycle.routes import lifecycle
+main.register_blueprint(lifecycle, url_prefix="/api/lifecycle")
 
 # TODO: Add subroutes for each service here.

@@ -86,7 +86,8 @@
   color: var(--text-primary);
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
   padding: 12px 14px;
   font-size: 15px;
@@ -103,12 +104,14 @@
   color: #b0b0b0;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(196, 18, 48, 0.1);
 }
 
-.form-group input.input-error {
+.form-group input.input-error,
+.form-group select.input-error {
   border-color: var(--carnegie-red);
 }
 

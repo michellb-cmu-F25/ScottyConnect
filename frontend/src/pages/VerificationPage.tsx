@@ -112,6 +112,7 @@ export default function VerificationPage() {
         return
       }
 
+      StorageUtil.setUser(data.user.username, data.user.email, data.user.id)
       StorageUtil.setToken(data.token)
       navigate('/mainpage')
     } catch {

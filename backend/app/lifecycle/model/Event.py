@@ -1,21 +1,16 @@
-# Domain shape for a user document (persistence via UserDAO).
+# Domain shape for an event document (persistence via LifecycleDAO).
 
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 
 
-class User(BaseModel):
+class Event(BaseModel):
     id: str | None = None
-    username: str
-    email: str
-    password: str
-    verification_code: str
-    verified: bool = False
-    role: str = "STUDENT"  # STUDENT or ALUMNI
-    bio: str = ""
-    tags: list[str] = []
-    
+    title: str
+    description: str
+    owner_id: str
+    status: str = "draft"
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
