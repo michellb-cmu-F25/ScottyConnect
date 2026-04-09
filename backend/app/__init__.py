@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from app.accounts.service import ACCOUNT_SERVICE_EXTENSION_KEY, AccountService
 from app.recommendation.service import RECOMMENDATION_SERVICE_EXTENSION_KEY, RecommendationService
 from app.lifecycle.service import LIFECYCLE_SERVICE_EXTENSION_KEY, LifecycleService
+from app.tasks.service import TASKS_SERVICE_EXTENSION_KEY, TasksService
 
 
 
@@ -42,7 +43,7 @@ def create_app():
     # app.extensions[FEEDBACK_SERVICE_EXTENSION_KEY] = FeedbackService()
     app.extensions[LIFECYCLE_SERVICE_EXTENSION_KEY] = LifecycleService()
     # app.extensions[NETWORKING_SERVICE_EXTENSION_KEY] = NetworkingService()
-    # app.extensions[TASKS_SERVICE_EXTENSION_KEY] = TasksService()
+    app.extensions[TASKS_SERVICE_EXTENSION_KEY] = TasksService()
 
     from .routes import main
 
