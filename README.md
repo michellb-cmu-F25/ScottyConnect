@@ -1,5 +1,11 @@
 # ScottyConnect Web App
 
+# UPDATE NOTE
+Sigrid is now enabled for this repo.
+You have new GitHub Actions workflow files.
+Accept your Sigrid invitation and review the analysis of your repo. 
+Visit Sigrid at https://sigrid-says.com/cmusvfse
+
 ## About
 
 ### [Production Link](https://project-3ht01.vercel.app/login)
