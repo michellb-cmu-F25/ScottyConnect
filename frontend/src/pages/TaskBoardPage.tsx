@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
-import { loadEvents, type StoredEvent } from './CreateEventPage'
+import { getEvent, apiEventToStored } from '../services/eventApi'
+import { loadEvents } from './CreateEventPage'
+import type { StoredEvent } from '../types/event'
 import '../styles/TaskBoard.css'
 
 interface TaskNode {
@@ -86,9 +88,35 @@ export default function TaskBoardPage() {
   }, [eventId, userId])
 
   useEffect(() => {
-    const ev = loadEvents().find((e) => e.id === eventId) ?? null
-    setEvent(ev)
-    loadTaskTree(ev)
+    let cancelled = false
+
+    async function loadEventAndTasks() {
+      if (!eventId) return
+      setLoading(true)
+      setError('')
+
+      let ev: StoredEvent | null = loadEvents().find((e) => e.id === eventId) ?? null
+
+      if (!ev) {
+        try {
+          const apiEv = await getEvent(eventId)
+          ev = apiEventToStored(apiEv)
+        } catch (e) {
+          if (!cancelled) {
+            setError(e instanceof Error ? e.message : 'Failed to load event')
+          }
+        }
+      }
+
+      if (cancelled) return
+      setEvent(ev)
+      await loadTaskTree(ev)
+    }
+
+    loadEventAndTasks()
+    return () => {
+      cancelled = true
+    }
   }, [eventId, loadTaskTree])
 
   function overallProgress(): number {
@@ -201,7 +229,7 @@ export default function TaskBoardPage() {
 
       return
     }
-    
+
     setModal(null)
     await loadTaskTree(event)
   }
