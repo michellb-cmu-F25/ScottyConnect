@@ -1,15 +1,3 @@
-# Composite Pattern for hierarchical task management.
-#
-# TaskComponent  — abstract interface (Component)
-# LeafTask       — task with no children (Leaf)
-# CompositeTask  — task with children   (Composite)
-#
-# Every operation defined on TaskComponent can be invoked uniformly on
-# both leaf and composite nodes.  The composite delegates recursively to
-# its children, so callers never need to distinguish node types.
-#
-# build_task_tree() reconstructs the in-memory tree from a flat task list.
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -141,7 +129,7 @@ class CompositeTask(TaskComponent):
 
     def is_composite(self) -> bool:
         return True
-        
+
 
 def build_task_tree(tasks: list[Task]) -> list[TaskComponent]:
     # Build a list of root-level TaskComponent trees from a flat task list.

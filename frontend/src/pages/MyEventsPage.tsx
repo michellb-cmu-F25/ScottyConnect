@@ -81,17 +81,21 @@ function getActions(ev: StoredEvent): { label: string; className: string; action
   switch (ev.status) {
     case 'draft':
       return [
+        { label: 'Tasks', className: 'me-action-publish', action: 'tasks' },
         { label: 'Edit', className: 'me-action-secondary', action: 'edit' },
         { label: 'Delete', className: 'me-action-danger', action: 'delete' },
       ]
     case 'published':
       return [
+        { label: 'Tasks', className: 'me-action-publish', action: 'tasks' },
         { label: 'End Event', className: 'me-action-secondary', action: 'end' },
         { label: 'Cancel', className: 'me-action-danger', action: 'cancel' },
       ]
     case 'ended':
     case 'cancelled':
-      return []
+      return [
+        { label: 'Tasks', className: 'me-action-secondary', action: 'tasks' },
+      ]
     default:
       return []
   }
@@ -120,6 +124,10 @@ export default function MyEventsPage() {
     .concat(loadEvents().filter((e) => userRegIds.has(e.id) && e.ownerId !== (user.id ?? 'anonymous')))
 
   function handleAction(ev: StoredEvent, action: string) {
+    if (action === 'tasks') {
+      navigate(`/events/${ev.id}/tasks`)
+      return
+    }
     if (action === 'edit') {
       navigate(`/events/${ev.id}/edit`)
       return
@@ -247,14 +255,22 @@ export default function MyEventsPage() {
                           </div>
                           <span className={`me-status-badge ${sc.className}`}>{sc.label}</span>
                         </div>
-                        {ev.status === 'published' && (
+                        {(ev.status === 'published' || ev.status === 'ended' || ev.status === 'cancelled') && (
                           <div className="me-event-actions">
                             <button
-                              className="me-action-btn me-action-danger"
-                              onClick={() => handleAction(ev, 'unregister')}
+                              className="me-action-btn me-action-publish"
+                              onClick={() => handleAction(ev, 'tasks')}
                             >
-                              Cancel Registration
+                              Tasks
                             </button>
+                            {ev.status === 'published' && (
+                              <button
+                                className="me-action-btn me-action-danger"
+                                onClick={() => handleAction(ev, 'unregister')}
+                              >
+                                Cancel Registration
+                              </button>
+                            )}
                           </div>
                         )}
                       </article>
