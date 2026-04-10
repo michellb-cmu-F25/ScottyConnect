@@ -15,8 +15,8 @@ from app.lifecycle.schemas import (
 )
 from app.lifecycle.schedule_validation import validate_event_schedule
 from app.lifecycle.states import resolve_state
-from app.bus.message_bus import Service
-
+from app.bus.message import Message, MessageType
+from app.bus.message_bus import MessageBus, Service
 LIFECYCLE_SERVICE_EXTENSION_KEY = "lifecycle_service"
 
 
@@ -105,6 +105,16 @@ class LifecycleService(Service):
             return EventResponse(message=str(e), event=None, code=400)
 
         updated = self._dao.update_status(event_id, target_status)
+
+        # Notify TasksService so they can react to the state change.
+        # e.g. If an event transitions to "completed", TasksService might mark related tasks as done.
+        MessageBus.publish(
+            Message(
+                MessageType.LIFECYCLE_MESSAGE,
+                {"event_id": event_id, "new_status": target_status},
+            )
+        )
+
         return EventResponse(
             message="Success",
             event=self._to_public_event(updated),
