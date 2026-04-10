@@ -1,16 +1,61 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import StorageUtil from '../common/StorageUtil'
+import { createEvent as createEventAPI } from '../services/eventApi'
+import type { EventFormData, StoredEvent } from '../types/event'
 import '../styles/CreateEvent.css'
 
-export interface EventFormData {
-  title: string
-  description: string
-  date: string
-  startTime: string
-  endTime: string
-  location: string
-  capacity: string
+export type { EventFormData, StoredEvent }
+
+/** Local calendar date YYYY-MM-DD */
+function getLocalDateString(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** Local time HH:mm for `<input type="time" />` */
+function getLocalTimeString(d: Date): string {
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${h}:${min}`
+}
+
+function parseLocalDateTimeMs(dateStr: string, timeStr: string): number {
+  const [Y, M, D] = dateStr.split('-').map(Number)
+  const [hh, mm] = timeStr.split(':').map(Number)
+  return new Date(Y, M - 1, D, hh, mm, 0, 0).getTime()
+}
+
+/** Event start must be strictly after now; end must be strictly after start (same calendar day). */
+function isScheduleInFuture(dateStr: string, startTime: string, endTime: string): boolean {
+  if (!dateStr || !startTime || !endTime) return false
+  const startMs = parseLocalDateTimeMs(dateStr, startTime)
+  const endMs = parseLocalDateTimeMs(dateStr, endTime)
+  const nowMs = Date.now()
+  if (endMs <= startMs) return false
+  if (startMs <= nowMs) return false
+  return true
+}
+
+/** Lexicographic max for equal-length HH:mm strings on the same day. */
+function maxTimeHHMM(a: string, b: string): string {
+  return a >= b ? a : b
+}
+
+function isDateBeforeToday(dateStr: string, todayStr: string): boolean {
+  return dateStr !== '' && dateStr < todayStr
+}
+
+/** True if start is now or in the past (invalid for new/edited events). */
+function isStartNotStrictlyFuture(dateStr: string, startTime: string): boolean {
+  if (!dateStr || !startTime) return false
+  return parseLocalDateTimeMs(dateStr, startTime) <= Date.now()
+}
+
+function isEndNotAfterStart(dateStr: string, startTime: string, endTime: string): boolean {
+  if (!dateStr || !startTime || !endTime) return false
+  return parseLocalDateTimeMs(dateStr, endTime) <= parseLocalDateTimeMs(dateStr, startTime)
 }
 
 const EVENTS_STORAGE_KEY = 'scottyConnectEvents'
@@ -21,12 +66,6 @@ function loadEvents(): StoredEvent[] {
   } catch {
     return []
   }
-}
-
-function saveEvent(event: StoredEvent) {
-  const events = loadEvents()
-  events.push(event)
-  localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events))
 }
 
 function updateEvent(updated: StoredEvent) {
@@ -44,20 +83,6 @@ function deleteEvent(eventId: string) {
 
 function findEvent(eventId: string): StoredEvent | undefined {
   return loadEvents().find((e) => e.id === eventId)
-}
-
-export interface StoredEvent {
-  id: string
-  title: string
-  description: string
-  date: string
-  startTime: string
-  endTime: string
-  location: string
-  capacity: number | null
-  status: 'draft' | 'published' | 'ended' | 'cancelled'
-  ownerId: string
-  createdAt: string
 }
 
 export { EVENTS_STORAGE_KEY, loadEvents, updateEvent, deleteEvent, findEvent }
@@ -90,7 +115,7 @@ interface EventFormProps {
   pageSubtitle: string
   backTo: string
   backLabel: string
-  onSave: (form: EventFormData, status: StoredEvent['status']) => void
+  onSave: (form: EventFormData, status: StoredEvent['status']) => void | Promise<void>
 }
 
 export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLabel, onSave }: EventFormProps) {
@@ -99,9 +124,49 @@ export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLa
   const [showDraftModal, setShowDraftModal] = useState(false)
   const [form, setForm] = useState<EventFormData>(initialData ?? EMPTY_FORM)
 
-  function update(field: keyof EventFormData, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }))
+  const todayStr = getLocalDateString(new Date())
+  const nowTimeStr = getLocalTimeString(new Date())
+
+  const startTimeMin = form.date === todayStr ? nowTimeStr : undefined
+
+  let endTimeMin: string | undefined
+  if (!form.date) {
+    endTimeMin = undefined
+  } else if (form.date === todayStr) {
+    endTimeMin = form.startTime ? maxTimeHHMM(nowTimeStr, form.startTime) : nowTimeStr
+  } else {
+    endTimeMin = form.startTime || undefined
   }
+
+  function update(field: keyof EventFormData, value: string) {
+    setForm((prev) => {
+      const next: EventFormData = { ...prev, [field]: value }
+      if (field === 'date') {
+        const t = getLocalDateString(new Date())
+        const n = getLocalTimeString(new Date())
+        if (value === t) {
+          if (next.startTime && next.startTime < n) next.startTime = n
+          const endMin =
+            next.startTime && next.startTime >= n ? next.startTime : n
+          if (next.endTime && next.endTime <= endMin) next.endTime = ''
+        }
+      }
+      if (field === 'startTime' && next.date === getLocalDateString(new Date())) {
+        const n = getLocalTimeString(new Date())
+        if (value < n) next.startTime = n
+      }
+      if (field === 'startTime' && next.endTime && next.endTime <= value) {
+        next.endTime = ''
+      }
+      return next
+    })
+  }
+
+  const scheduleOk = isScheduleInFuture(form.date, form.startTime, form.endTime)
+
+  const warnPastDate = isDateBeforeToday(form.date, todayStr)
+  const warnPastStart = isStartNotStrictlyFuture(form.date, form.startTime)
+  const warnEndNotAfterStart = isEndNotAfterStart(form.date, form.startTime, form.endTime)
 
   const isValid =
     form.title.trim() !== '' &&
@@ -109,24 +174,31 @@ export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLa
     form.date !== '' &&
     form.startTime !== '' &&
     form.endTime !== '' &&
-    form.location.trim() !== ''
+    form.location.trim() !== '' &&
+    scheduleOk
 
-  function handleSubmit(status: StoredEvent['status']) {
+  async function handleSubmit(status: StoredEvent['status']) {
     if (!isValid) return
     setSubmitting(true)
-    onSave(form, status)
-    setSubmitting(false)
-    if (status === 'draft') {
-      setShowDraftModal(true)
+    try {
+      await onSave(form, status)
+      if (status === 'draft') {
+        setShowDraftModal(true)
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  function onFormSubmit(e: FormEvent) {
+  async function onFormSubmit(e: FormEvent) {
     e.preventDefault()
     if (!isValid) return
     setSubmitting(true)
-    onSave(form, 'published')
-    setSubmitting(false)
+    try {
+      await onSave(form, 'published')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -205,6 +277,7 @@ export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLa
                   id="ev-date"
                   className="create-event-input"
                   type="date"
+                  min={todayStr}
                   value={form.date}
                   onChange={(e) => update('date', e.target.value)}
                   required
@@ -219,6 +292,7 @@ export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLa
                     id="ev-start"
                     className="create-event-input"
                     type="time"
+                    min={startTimeMin}
                     value={form.startTime}
                     onChange={(e) => update('startTime', e.target.value)}
                     required
@@ -232,12 +306,29 @@ export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLa
                     id="ev-end"
                     className="create-event-input"
                     type="time"
+                    min={endTimeMin}
                     value={form.endTime}
                     onChange={(e) => update('endTime', e.target.value)}
                     required
                   />
                 </div>
               </div>
+              {(warnPastDate || warnPastStart || warnEndNotAfterStart || (form.date && form.startTime && form.endTime && !scheduleOk)) && (
+                <div className="create-event-schedule-warnings" role="status">
+                  {warnPastDate && (
+                    <p className="create-event-schedule-warn">This date is in the past. Choose today or a future date.</p>
+                  )}
+                  {warnPastStart && (
+                    <p className="create-event-schedule-warn">Start time must be in the future.</p>
+                  )}
+                  {warnEndNotAfterStart && (
+                    <p className="create-event-schedule-warn">End time must be after start time.</p>
+                  )}
+                  {!warnPastDate && !warnPastStart && !warnEndNotAfterStart && form.date && form.startTime && form.endTime && !scheduleOk && (
+                    <p className="create-event-schedule-hint">Choose a date and times in the future, with end time after start time.</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -328,35 +419,30 @@ export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLa
 
 export default function CreateEventPage() {
   const navigate = useNavigate()
+  const [error, setError] = useState('')
 
-  function handleSave(form: EventFormData, status: StoredEvent['status']) {
-    const user = StorageUtil.getUser()
-    const event: StoredEvent = {
-      id: crypto.randomUUID(),
-      title: form.title.trim(),
-      description: form.description.trim(),
-      date: form.date,
-      startTime: form.startTime,
-      endTime: form.endTime,
-      location: form.location.trim(),
-      capacity: form.capacity ? parseInt(form.capacity, 10) : null,
-      status,
-      ownerId: user.id ?? 'anonymous',
-      createdAt: new Date().toISOString(),
-    }
-    saveEvent(event)
-    if (status === 'published') {
-      navigate('/event-published', { state: { eventId: event.id } })
+  async function handleSave(form: EventFormData, status: StoredEvent['status']) {
+    setError('')
+    try {
+      const saved = await createEventAPI(form, status as 'draft' | 'published')
+      if (status === 'published') {
+        navigate('/event-published', { state: { eventId: saved.id } })
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create event')
     }
   }
 
   return (
-    <EventForm
-      pageTitle="Create new event"
-      pageSubtitle="Fill in the details below to create a new event for the ScottyConnect community."
-      backTo="/mainpage"
-      backLabel="Back to home"
-      onSave={handleSave}
-    />
+    <>
+      {error && <div className="create-event-error">{error}</div>}
+      <EventForm
+        pageTitle="Create new event"
+        pageSubtitle="Fill in the details below to create a new event for the ScottyConnect community."
+        backTo="/mainpage"
+        backLabel="Back to home"
+        onSave={handleSave}
+      />
+    </>
   )
 }

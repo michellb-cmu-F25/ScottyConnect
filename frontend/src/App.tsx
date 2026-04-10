@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import ProtectedRoute from './common/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import VerificationPage from './pages/VerificationPage'
@@ -21,10 +22,31 @@ function App() {
         <Route path="/mainpage" element={<MainPage />} />
         <Route path="/networking" element={<NetworkingPage />} />
         <Route path="/feedback" element={<PlaceholderPage title="Feedback" />} />
-        <Route path="/publish-event" element={<CreateEventPage />} />
+        <Route
+          path="/publish-event"
+          element={
+            <ProtectedRoute>
+              <CreateEventPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/attendance" element={<PlaceholderPage title="Attendance" />} />
-        <Route path="/my-events" element={<MyEventsPage />} />
-        <Route path="/events/:id/edit" element={<EditEventPage />} />
+        <Route
+          path="/my-events"
+          element={
+            <ProtectedRoute>
+              <MyEventsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/events/:id/edit"
+          element={
+            <ProtectedRoute>
+              <EditEventPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/events/:eventId/tasks" element={<TaskBoardPage />} />
         <Route path="/event-published" element={<EventConfirmationPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
