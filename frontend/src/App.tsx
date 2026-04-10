@@ -10,6 +10,7 @@ import CreateEventPage from './pages/CreateEventPage'
 import MyEventsPage from './pages/MyEventsPage'
 import EventConfirmationPage from './pages/EventConfirmationPage'
 import EditEventPage from './pages/EditEventPage'
+import TaskBoardPage from './pages/TaskBoardPage'
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/events/:eventId/tasks" element={<TaskBoardPage />} />
         <Route path="/event-published" element={<EventConfirmationPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
