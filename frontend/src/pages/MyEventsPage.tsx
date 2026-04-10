@@ -148,7 +148,7 @@ export default function MyEventsPage() {
   const registeredEvents = MOCK_REGISTERED_EVENTS.filter(() => true)
     .concat(loadEvents().filter((e) => userRegIds.has(e.id) && e.ownerId !== (user.id ?? 'anonymous')))
 
-  function handleAction(ev: StoredEvent, action: string) {
+  async function handleAction(ev: StoredEvent, action: string) {
     if (action === 'tasks') {
       navigate(`/events/${ev.id}/tasks`)
       return
