@@ -6,7 +6,8 @@ import StorageUtil from '../common/StorageUtil'
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const successMessage = (location.state as { message?: string } | null)?.message
+  const loginState = location.state as { message?: string; from?: string } | null
+  const successMessage = loginState?.message
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -44,7 +45,7 @@ export default function LoginPage() {
 
       StorageUtil.setUser(data.user.username, data.user.email, data.user.id)
       StorageUtil.setToken(data.token)
-      navigate('/mainpage')
+      navigate(loginState?.from || '/mainpage')
     } catch {
       setError('Unable to connect to the server.')
     } finally {
