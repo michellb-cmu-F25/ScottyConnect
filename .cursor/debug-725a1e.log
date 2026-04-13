@@ -1,5 +1,0 @@
-{"sessionId":"725a1e","location":"eventApi.ts:createEvent","message":"before POST /api/lifecycle/events","data":{"hypothesisId":"H1_H5","hasAuthHeader":true,"tokenFromStorage":true},"timestamp":1775776027056}
-{"sessionId": "725a1e", "hypothesisId": "H2_H4", "message": "require_auth: incoming Authorization", "data": {"path": "/api/lifecycle/events", "has_auth_header": true, "auth_prefix": "Bearer eyJhb", "starts_with_Bearer_space": true, "starts_with_bearer_lower": true, "token_len_after_prefix": 155}, "timestamp": 1775776027064}
-{"sessionId": "725a1e", "hypothesisId": "H3", "message": "require_auth: success", "data": {"user_id_present": true}, "timestamp": 1775776027065}
-{"sessionId": "725a1e", "hypothesisId": "H2_H4", "message": "require_auth: incoming Authorization", "data": {"path": "/api/lifecycle/events/mine", "has_auth_header": true, "auth_prefix": "Bearer eyJhb", "starts_with_Bearer_space": true, "starts_with_bearer_lower": true, "token_len_after_prefix": 155}, "timestamp": 1775776225234}
-{"sessionId": "725a1e", "hypothesisId": "H3", "message": "require_auth: success", "data": {"user_id_present": true}, "timestamp": 1775776225234}

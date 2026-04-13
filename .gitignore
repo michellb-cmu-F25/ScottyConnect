@@ -29,3 +29,6 @@ dist/
 build/
 .vercel
 .env*.local
+
+# Cursor (editor metadata/logs)
+.cursor/
