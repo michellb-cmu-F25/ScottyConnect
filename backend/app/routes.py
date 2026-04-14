@@ -9,7 +9,7 @@ from app.accounts.routes import accounts
 from app.networking.routes import networking
 from app.recommendation.routes import recommendation
 from app.tasks.routes import tasks
-
+from app.attendance.routes import attendance
 from app.utils.openapi_generator import generate_openapi_spec
 
 main = Blueprint("main", __name__)
@@ -59,6 +59,7 @@ def docs():
 
 # Register sub-blueprints for each module
 main.register_blueprint(accounts, url_prefix="/api/accounts")
+main.register_blueprint(attendance, url_prefix="/api/attendance")
 main.register_blueprint(networking, url_prefix="/api/networking")
 main.register_blueprint(recommendation, url_prefix="/api/recommendation")
 main.register_blueprint(tasks, url_prefix="/api/tasks")
