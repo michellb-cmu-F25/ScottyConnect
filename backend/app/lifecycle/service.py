@@ -143,6 +143,7 @@ class LifecycleService(Service):
         event = self._dao.find_by_id(event_id)
         if event is None:
             return EventResponse(message="Event not found", event=None, code=404)
+        is_owner = event.owner_id == user_id
         if event.owner_id != user_id:
             return EventResponse(
                 message="Only the event owner can update this event",
@@ -151,13 +152,9 @@ class LifecycleService(Service):
             )
         state = resolve_state(event.status)
         try:
-            state.validate_edit_event(True)
-        except ValueError:
-            return EventResponse(
-                message="Only draft events can be edited",
-                event=None,
-                code=400,
-            )
+            state.validate_edit_event(is_owner)
+        except ValueError as e:
+            return EventResponse(message=str(e), event=None, code=400)
 
         data = req.model_dump(exclude_unset=True)
         target_status = data.pop("status", None)
@@ -206,6 +203,7 @@ class LifecycleService(Service):
         event = self._dao.find_by_id(event_id)
         if event is None:
             return EventResponse(message="Event not found", event=None, code=404)
+        is_owner = event.owner_id == user_id
         if event.owner_id != user_id:
             return EventResponse(
                 message="Only the event owner can delete this event",
@@ -214,12 +212,8 @@ class LifecycleService(Service):
             )
         state = resolve_state(event.status)
         try:
-            state.validate_delete_event(True)
-        except ValueError:
-            return EventResponse(
-                message="Only draft events can be deleted",
-                event=None,
-                code=400,
-            )
+            state.validate_delete_event(is_owner)
+        except ValueError as e:
+            return EventResponse(message=str(e), event=None, code=400)
         self._dao.delete_by_id(event_id)
         return EventResponse(message="Event deleted", event=None, code=200)
