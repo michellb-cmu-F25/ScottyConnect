@@ -104,6 +104,7 @@ class LifecycleService(Service):
         except ValueError as e:
             return EventResponse(message=str(e), event=None, code=400)
 
+        old_status = event.status
         updated = self._dao.update_status(event_id, target_status)
 
         # Notify TasksService so they can react to the state change.
@@ -111,7 +112,11 @@ class LifecycleService(Service):
         MessageBus.publish(
             Message(
                 MessageType.LIFECYCLE_MESSAGE,
-                {"event_id": event_id, "new_status": target_status},
+                {
+                    "event_id": event_id,
+                    "new_status": target_status,
+                    "old_status": old_status,
+                },
             )
         )
 
