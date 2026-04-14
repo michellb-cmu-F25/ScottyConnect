@@ -149,7 +149,10 @@ class LifecycleService(Service):
                 event=None,
                 code=403,
             )
-        if event.status != "draft":
+        state = resolve_state(event.status)
+        try:
+            state.validate_edit_event(True)
+        except ValueError:
             return EventResponse(
                 message="Only draft events can be edited",
                 event=None,
@@ -209,7 +212,10 @@ class LifecycleService(Service):
                 event=None,
                 code=403,
             )
-        if event.status != "draft":
+        state = resolve_state(event.status)
+        try:
+            state.validate_delete_event(True)
+        except ValueError:
             return EventResponse(
                 message="Only draft events can be deleted",
                 event=None,
