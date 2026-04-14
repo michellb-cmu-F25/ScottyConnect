@@ -12,6 +12,14 @@ class DraftState(EventState):
     def allowed_transitions(self) -> list[str]:
         return ["published"]
 
+    def validate_edit_event(self, is_owner: bool) -> None:
+        if not is_owner:
+            raise ValueError("Only the event owner can update this event")
+
+    def validate_delete_event(self, is_owner: bool) -> None:
+        if not is_owner:
+            raise ValueError("Only the event owner can delete this event")
+
     def validate_create_task(self, is_owner: bool) -> None:
         if not is_owner:
             raise ValueError("Only the event owner can create tasks in 'draft' state")

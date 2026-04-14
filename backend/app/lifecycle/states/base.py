@@ -26,6 +26,16 @@ class EventState(ABC):
         return target_status
 
 
+    # Event-level permissions — default-deny
+    # Concrete states override only the operations they explicitly allow.
+    # If a state does not override a method, the operation is denied.
+
+    def validate_edit_event(self, is_owner: bool) -> None:
+        raise ValueError(f"Editing event is not allowed in '{self.name}' state")
+
+    def validate_delete_event(self, is_owner: bool) -> None:
+        raise ValueError(f"Deleting event is not allowed in '{self.name}' state")
+
     # Task-coordination permissions — default-deny
     # Concrete states override only the operations they explicitly allow.
     # If a state does not override a method, the operation is denied.
