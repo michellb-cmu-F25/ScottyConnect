@@ -5,6 +5,7 @@ Dispatches to the correct strategy via the factory and returns a structured
 RecommendationResponse.
 """
 
+from app.recommendation.dao.attendance_signal_dao import AttendanceSignalDAO
 from app.recommendation.dao.event_tag_dao import EventTagDAO
 from app.recommendation.dao.user_profile_dao import UserProfileDAO
 from app.recommendation.schemas import RecommendationResponse
@@ -24,10 +25,14 @@ class RecommendationService:
         self,
         user_profile_dao: UserProfileDAO | None = None,
         event_tag_dao: EventTagDAO | None = None,
+        attendance_signal_dao: AttendanceSignalDAO | None = None,
     ) -> None:
         user_profile_dao = user_profile_dao or UserProfileDAO()
         event_tag_dao = event_tag_dao or EventTagDAO()
-        self._factory = RecommendationStrategyFactory(user_profile_dao, event_tag_dao)
+        attendance_signal_dao = attendance_signal_dao or AttendanceSignalDAO()
+        self._factory = RecommendationStrategyFactory(
+            user_profile_dao, event_tag_dao, attendance_signal_dao
+        )
 
     def get_recommendation(
         self, user_id: str, strategy: str, limit: int = 20
