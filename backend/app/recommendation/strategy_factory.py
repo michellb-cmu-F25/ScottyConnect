@@ -6,6 +6,7 @@ All strategies are constructed once with their required DAOs; the factory
 simply looks up and returns the appropriate instance.
 """
 
+from app.recommendation.dao.attendance_signal_dao import AttendanceSignalDAO
 from app.recommendation.dao.event_tag_dao import EventTagDAO
 from app.recommendation.dao.user_profile_dao import UserProfileDAO
 from app.recommendation.strategies.base import RecommendationStrategy
@@ -21,11 +22,14 @@ class RecommendationStrategyFactory:
         self,
         user_profile_dao: UserProfileDAO,
         event_tag_dao: EventTagDAO,
+        attendance_signal_dao: AttendanceSignalDAO,
     ) -> None:
         self._registry: dict[str, RecommendationStrategy] = {
             "tag": TagBasedRecommendationStrategy(user_profile_dao, event_tag_dao),
-            "popularity": PopularityBasedRecommendationStrategy(event_tag_dao),
-            "hybrid": HybridRecommendationStrategy(user_profile_dao, event_tag_dao),
+            "popularity": PopularityBasedRecommendationStrategy(attendance_signal_dao),
+            "hybrid": HybridRecommendationStrategy(
+                user_profile_dao, event_tag_dao, attendance_signal_dao
+            ),
         }
 
     def create_strategy(self, strategy: str) -> RecommendationStrategy:

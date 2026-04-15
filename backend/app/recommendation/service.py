@@ -1,10 +1,14 @@
 """
 Recommendation Service
 
-Dispatches to the correct strategy via the factory and returns a structured
-RecommendationResponse.
+Dispatches to the correct strategy via the factory, filters ranked results
+to published events, then appends any remaining published events at the end
+so the user always sees the full published catalog — ranked events first,
+unranked published events after.
 """
 
+from app.recommendation.dao.attendance_signal_dao import AttendanceSignalDAO
+from app.recommendation.dao.event_signal_dao import EventSignalDAO
 from app.recommendation.dao.event_tag_dao import EventTagDAO
 from app.recommendation.dao.user_profile_dao import UserProfileDAO
 from app.recommendation.schemas import RecommendationResponse
@@ -24,22 +28,38 @@ class RecommendationService:
         self,
         user_profile_dao: UserProfileDAO | None = None,
         event_tag_dao: EventTagDAO | None = None,
+        attendance_signal_dao: AttendanceSignalDAO | None = None,
+        event_signal_dao: EventSignalDAO | None = None,
     ) -> None:
         user_profile_dao = user_profile_dao or UserProfileDAO()
         event_tag_dao = event_tag_dao or EventTagDAO()
-        self._factory = RecommendationStrategyFactory(user_profile_dao, event_tag_dao)
+        attendance_signal_dao = attendance_signal_dao or AttendanceSignalDAO()
+        self._event_signal_dao = event_signal_dao or EventSignalDAO()
+        self._factory = RecommendationStrategyFactory(
+            user_profile_dao, event_tag_dao, attendance_signal_dao
+        )
 
     def get_recommendation(
         self, user_id: str, strategy: str, limit: int = 20
     ) -> RecommendationResponse:
         try:
-            dao = self._factory.create_strategy(strategy)
+            strategy_obj = self._factory.create_strategy(strategy)
         except ValueError as e:
             return RecommendationResponse(
-                message=str(e), strategy=strategy, event_ids=[], code=400
+                message=str(e), strategy=strategy, events=[], code=400
             )
 
-        event_ids = dao.recommend(user_id, limit=limit)
+        ranked_ids = strategy_obj.recommend(user_id, limit=limit)
+        ranked_events = self._event_signal_dao.get_published_events_by_ids(ranked_ids)
+
+        all_published = self._event_signal_dao.get_all_published_events()
+        ranked_ids_set = {event.id for event in ranked_events}
+        unranked_tail = [event for event in all_published if event.id not in ranked_ids_set]
+
+        combined = ranked_events + unranked_tail
         return RecommendationResponse(
-            message="Success", strategy=strategy, event_ids=event_ids, code=200
+            message="Success",
+            strategy=strategy,
+            events=combined[:limit],
+            code=200,
         )
