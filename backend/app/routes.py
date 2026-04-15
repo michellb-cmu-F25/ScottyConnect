@@ -67,4 +67,5 @@ main.register_blueprint(tasks, url_prefix="/api/tasks")
 from app.lifecycle.routes import lifecycle
 main.register_blueprint(lifecycle, url_prefix="/api/lifecycle")
 
-# TODO: Add subroutes for each service here.
+from app.feedback.routes import feedback
+main.register_blueprint(feedback, url_prefix="/api/feedback")
