@@ -1,0 +1,450 @@
+/* ============================================
+   My Meetings Page Styles
+   ============================================ */
+
+.meetings-page {
+  min-height: 100vh;
+  background: var(--bg-primary, #f9fafb);
+  padding: 0 0 60px;
+}
+
+/* Header ---------------------------------------- */
+.meetings-header {
+  background: linear-gradient(135deg, #c41230 0%, #9b0e25 100%);
+  color: white;
+  padding: 32px 40px 40px;
+}
+
+.meetings-header-nav {
+  margin-bottom: 24px;
+}
+
+.meetings-back-btn {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.meetings-back-btn:hover {
+  color: white;
+}
+
+.meetings-header-content h1 {
+  font-size: 32px;
+  font-weight: 800;
+  margin: 0 0 6px;
+  letter-spacing: -0.5px;
+}
+
+.meetings-header-content p {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 32px;
+}
+
+/* Stats Row ---------------------------------------- */
+.meetings-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.meetings-stat-card {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 14px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  backdrop-filter: blur(8px);
+  min-width: 100px;
+}
+
+.meetings-stat-num {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.meetings-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Toast ---------------------------------------- */
+.meetings-toast {
+  margin: 16px 40px 0;
+  padding: 12px 20px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  animation: slideDown 0.3s ease;
+}
+
+.meetings-alertbox {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  min-width: 300px;
+  max-width: 420px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.16);
+  z-index: 1400;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  animation: slideDown 0.25s ease;
+}
+
+.meetings-alertbox--success {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.meetings-alertbox--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.meetings-alertbox-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.meetings-alertbox-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.meetings-alertbox-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.meetings-alertbox-close:hover {
+  opacity: 1;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Tabs ---------------------------------------- */
+.meetings-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 24px 40px 0;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  margin-bottom: 32px;
+}
+
+.meetings-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -1px;
+}
+
+.meetings-tab:hover {
+  color: #c41230;
+}
+
+.meetings-tab.active {
+  color: #c41230;
+  border-bottom-color: #c41230;
+}
+
+.meetings-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: #c41230;
+  color: white;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.meetings-tab-badge--muted {
+  background: var(--bg-subtle, #f3f4f6);
+  color: var(--text-secondary, #6b7280);
+}
+
+/* Meeting List ---------------------------------------- */
+.meetings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 40px;
+  max-width: 900px;
+}
+
+/* Empty State ---------------------------------------- */
+.meetings-empty {
+  text-align: center;
+  padding: 80px 40px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.meetings-empty-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.meetings-empty h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0 0 8px;
+}
+
+.meetings-empty p {
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
+.meetings-cta-btn {
+  display: inline-block;
+  padding: 10px 24px;
+  background: #c41230;
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.meetings-cta-btn:hover { opacity: 0.9; }
+
+/* Meeting Card ---------------------------------------- */
+.meeting-card {
+  display: flex;
+  gap: 20px;
+  background: var(--white, #ffffff);
+  border-radius: 16px;
+  padding: 20px 24px;
+  border: 1px solid var(--border, #e5e7eb);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.meeting-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Accent left border by status */
+.meeting-card--pending  { border-left: 4px solid #f59e0b; }
+.meeting-card--accepted { border-left: 4px solid #10b981; }
+.meeting-card--declined { border-left: 4px solid #ef4444; }
+.meeting-card--cancelled{ border-left: 4px solid #9ca3af; }
+
+/* Past meetings — greyed out, no hover lift */
+.meeting-card--past {
+  border-left-color: #d1d5db;
+  opacity: 0.75;
+}
+
+.meeting-card--past:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.meeting-card--past .meeting-avatar {
+  background: #9ca3af;
+}
+
+/* Past accepted keeps reduced style */
+.meeting-card--past-accepted {
+  opacity: 0.6;
+}
+
+.status-past,
+.status-past-accepted {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* Avatar */
+.meeting-card-left {
+  flex-shrink: 0;
+}
+
+.meeting-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c41230, #9b0e25);
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card body */
+.meeting-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.meeting-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.meeting-direction {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 2px;
+}
+
+.meeting-name {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary, #111827);
+}
+
+/* Status badges */
+.meeting-status-badge {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.status-pending   { background: #fef3c7; color: #92400e; }
+.status-accepted  { background: #dcfce7; color: #166534; }
+.status-declined  { background: #fee2e2; color: #991b1b; }
+.status-cancelled { background: #f3f4f6; color: #4b5563; }
+
+/* Timeslot */
+.meeting-timeslot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 14px;
+}
+
+/* Action Buttons */
+.meeting-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.meeting-btn {
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.meeting-btn--accept  { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.meeting-btn--decline { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+.meeting-btn--cancel  { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+.meeting-btn--complete { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+
+.meeting-btn--accept:hover  { background: #bbf7d0; }
+.meeting-btn--decline:hover { background: #fecaca; }
+.meeting-btn--cancel:hover  { background: #e5e7eb; }
+.meeting-btn--complete:hover { background: #bfdbfe; }
+
+/* Loading */
+.meetings-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  gap: 16px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.meetings-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #c41230;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .meetings-header {
+    padding: 24px 20px 32px;
+  }
+
+  .meetings-tabs,
+  .meetings-list {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .meeting-card-top {
+    flex-direction: column;
+  }
+}
