@@ -2,7 +2,9 @@
 
 from datetime import datetime, timezone
 
-from app.accounts.Models.User import User
+from bson import ObjectId
+
+from app.accounts.model.User import User
 from app.utils.db import Database, get_database
 
 USERS_COLLECTION = "users"
@@ -17,6 +19,10 @@ class UserDAO:
         return self._database.db[USERS_COLLECTION]
 
     def insert(self, user: User) -> User:
+        if self.find_by_email(user.email) is not None:
+            raise ValueError("Email already registered")
+        if self.find_by_username(user.username) is not None:
+            raise ValueError("Username already taken")
         doc = user.model_dump(exclude={"id"}, exclude_none=True)
         result = self._col.insert_one(doc)
         return user.model_copy(update={"id": str(result.inserted_id)})
@@ -29,11 +35,30 @@ class UserDAO:
         doc = self._col.find_one({"username": username})
         return self._to_user(doc)
 
+    def find_by_id(self, user_id: str) -> User | None:
+        """Finds a user by their internal ObjectID."""
+        try:
+            doc = self._col.find_one({"_id": ObjectId(user_id)})
+            return self._to_user(doc)
+        except Exception:
+            return None
+
     def set_verified(self, email: str, verified: bool) -> bool:
         now = datetime.now(timezone.utc)
         res = self._col.update_one(
             {"email": email},
             {"$set": {"verified": verified, "updated_at": now}},
+        )
+        return res.modified_count > 0
+
+    def update(self, user: User) -> bool:
+        """Updates an existing user record in the database."""
+        if not user.id:
+            return False
+        doc = user.model_dump(exclude={"id"}, exclude_none=True)
+        res = self._col.update_one(
+            {"_id": ObjectId(user.id)},
+            {"$set": doc}
         )
         return res.modified_count > 0
 

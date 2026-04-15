@@ -1,11 +1,14 @@
+import os
+
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 # Token Manager for JWT
 """
 This class is used to generate and verify JWT tokens.
 """
+
 
 class JWT:
 
@@ -17,9 +20,10 @@ class JWT:
     Generate a JWT token for a user.
     """
     def generate_token(self, user_id: str | int) -> str:
+        hours = int(os.getenv("JWT_EXPIRES_HOURS", "24"))
         payload = {
             "user_id": str(user_id),
-            "exp": datetime.now() + timedelta(hours=1)
+            "exp": datetime.now(timezone.utc) + timedelta(hours=hours),
         }
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
     
