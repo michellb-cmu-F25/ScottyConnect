@@ -27,7 +27,9 @@ class RecommendationStrategyFactory:
         self._registry: dict[str, RecommendationStrategy] = {
             "tag": TagBasedRecommendationStrategy(user_profile_dao, event_tag_dao),
             "popularity": PopularityBasedRecommendationStrategy(attendance_signal_dao),
-            "hybrid": HybridRecommendationStrategy(user_profile_dao, event_tag_dao),
+            "hybrid": HybridRecommendationStrategy(
+                user_profile_dao, event_tag_dao, attendance_signal_dao
+            ),
         }
 
     def create_strategy(self, strategy: str) -> RecommendationStrategy:
