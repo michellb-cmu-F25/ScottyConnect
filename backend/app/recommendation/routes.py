@@ -18,7 +18,7 @@ MAX_LIMIT = 100
 @recommendation.route("/<user_id>", methods=["GET"])
 @doc(
     response=RecommendationResponse,
-    description="Get recommended event IDs for a user",
+    description="Get recommended published events for a user, ranked by strategy with remaining published events appended",
     tags=["recommendation"],
     success_status=200,
 )
