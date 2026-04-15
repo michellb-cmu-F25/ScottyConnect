@@ -11,6 +11,7 @@ import MyEventsPage from './pages/MyEventsPage'
 import EventConfirmationPage from './pages/EventConfirmationPage'
 import EditEventPage from './pages/EditEventPage'
 import TaskBoardPage from './pages/TaskBoardPage'
+import MyMeetingsPage from './pages/MyMeetingsPage'
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/verify" element={<VerificationPage />} />
         <Route path="/mainpage" element={<MainPage />} />
         <Route path="/networking" element={<NetworkingPage />} />
+        <Route path="/my-meetings" element={<MyMeetingsPage />} />
         <Route path="/feedback" element={<PlaceholderPage title="Feedback" />} />
         <Route
           path="/publish-event"
