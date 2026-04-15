@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import StorageUtil from '../common/StorageUtil'
+import StorageUtil, { type RecommendationStrategy } from '../common/StorageUtil'
 import { listPublishedEvents, listMyEvents, apiEventToStored } from '../services/eventApi'
+import { getRecommendations } from '../services/recommendationApi'
 import type { StoredEvent } from '../types/event'
 import '../styles/Main.css'
+
+const STRATEGY_OPTIONS: { value: RecommendationStrategy; label: string }[] = [
+  { value: 'tag', label: 'Tag match' },
+  { value: 'popularity', label: 'Popular' },
+  { value: 'hybrid', label: 'For you' },
+]
 
 /** Convert HH:mm (24h) to h:mm AM/PM */
 function formatTime12h(hhmm: string): string {
@@ -35,18 +42,37 @@ function formatSpots(ev: StoredEvent): string {
 }
 
 export default function MainPage() {
-  const [publishedEvents, setPublishedEvents] = useState<StoredEvent[]>([])
+  const userId = StorageUtil.getUser().id
+  const isLoggedIn = !!userId && !!StorageUtil.getToken()
+
+  const [events, setEvents] = useState<StoredEvent[]>([])
   const [loadError, setLoadError] = useState('')
   const [myCreatedCount, setMyCreatedCount] = useState<number | null>(null)
+  const [strategy, setStrategy] = useState<RecommendationStrategy>(() =>
+    StorageUtil.getStrategy(),
+  )
+
+  function handleStrategyChange(next: RecommendationStrategy) {
+    setStrategy(next)
+    StorageUtil.setStrategy(next)
+  }
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const list = await listPublishedEvents()
-        if (!cancelled) {
-          setPublishedEvents(list.map(apiEventToStored))
-          setLoadError('')
+        if (isLoggedIn && userId) {
+          const list = await getRecommendations(userId, strategy, 20)
+          if (!cancelled) {
+            setEvents(list.map(apiEventToStored))
+            setLoadError('')
+          }
+        } else {
+          const list = await listPublishedEvents()
+          if (!cancelled) {
+            setEvents(list.map(apiEventToStored))
+            setLoadError('')
+          }
         }
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Failed to load events')
@@ -55,7 +81,7 @@ export default function MainPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isLoggedIn, userId, strategy])
 
   useEffect(() => {
     if (!StorageUtil.getToken()) {
@@ -101,13 +127,39 @@ export default function MainPage() {
         <section className="main-section" aria-labelledby="events-heading">
           <div className="main-section-head">
             <h2 id="events-heading" className="main-section-title">
-              Active events
+              {isLoggedIn ? 'Recommended for you' : 'Active events'}
             </h2>
-            <p className="main-section-desc">Open registrations and upcoming sessions</p>
+            <p className="main-section-desc">
+              {isLoggedIn
+                ? 'Published events ranked by your selected strategy'
+                : 'Open registrations and upcoming sessions'}
+            </p>
+            {isLoggedIn && (
+              <div
+                className="main-strategy-selector"
+                role="radiogroup"
+                aria-label="Recommendation strategy"
+              >
+                {STRATEGY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={strategy === opt.value}
+                    className={`main-strategy-option${
+                      strategy === opt.value ? ' is-active' : ''
+                    }`}
+                    onClick={() => handleStrategyChange(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {loadError && <p className="main-section-desc" role="alert">{loadError}</p>}
           <ul className="main-event-list">
-            {publishedEvents.map((ev) => (
+            {events.map((ev) => (
               <li key={ev.id}>
                 <article className="main-event-card">
                   <div className="main-event-card-body">
@@ -122,7 +174,7 @@ export default function MainPage() {
               </li>
             ))}
           </ul>
-          {publishedEvents.length === 0 && !loadError && (
+          {events.length === 0 && !loadError && (
             <p className="main-section-desc">No published events yet.</p>
           )}
         </section>

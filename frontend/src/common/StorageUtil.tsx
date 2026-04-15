@@ -1,4 +1,9 @@
-import { TOKEN_KEY, USER_KEY, EMAIL_KEY, ID_KEY } from "./StorageKeys";
+import { TOKEN_KEY, USER_KEY, EMAIL_KEY, ID_KEY, STRATEGY_KEY } from "./StorageKeys";
+
+export type RecommendationStrategy = 'tag' | 'popularity' | 'hybrid'
+
+const VALID_STRATEGIES: RecommendationStrategy[] = ['tag', 'popularity', 'hybrid']
+const DEFAULT_STRATEGY: RecommendationStrategy = 'hybrid'
 
 export default class StorageUtil {
 
@@ -30,6 +35,18 @@ export default class StorageUtil {
     }
     static removeToken() {
         localStorage.removeItem(TOKEN_KEY)
+    }
+
+    // Recommendation strategy operations
+    static setStrategy(strategy: RecommendationStrategy) {
+        localStorage.setItem(STRATEGY_KEY, strategy)
+    }
+    static getStrategy(): RecommendationStrategy {
+        const stored = localStorage.getItem(STRATEGY_KEY)
+        if (stored && (VALID_STRATEGIES as string[]).includes(stored)) {
+            return stored as RecommendationStrategy
+        }
+        return DEFAULT_STRATEGY
     }
 
 }
