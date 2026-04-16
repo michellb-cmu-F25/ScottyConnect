@@ -75,15 +75,15 @@ class AttendanceService(Service):
         # Verify that the organizer is the owner of the event
         event = self._dao.find_event_by_id(event_id)
         if not event:
-            return AttendEventResponse(message="Event no longer available.", code=404)
+            return AttendEventResponse(attended=False, message="Event no longer available.", code=404)
         if event.owner_id != organizer_id:
-            return AttendEventResponse(message="You are not the organizer of this event.", code=403)
+            return AttendEventResponse(attended=False, message="You are not the organizer of this event.", code=403)
         registration = self._dao.find_record_by_event_and_user(event_id, user_id)
         if not registration:
-            return AttendEventResponse(message="User is not registered for this event.", code=404)
+            return AttendEventResponse(attended=False, message="User is not registered for this event.", code=404)
         self._dao.update(registration.id, {"attendance_time": datetime.now(timezone.utc)})
         # TODO: Send message to message bus to notify the user that they have been marked as attended
-        return AttendEventResponse(message="Successfully marked as attended the event.", code=200)
+        return AttendEventResponse(attended=True, message="Successfully marked as attended the event.", code=200)
 
     # Marks a user as not attended an event.
     def unattend_event(self, event_id: str, user_id: str, organizer_id: str) -> AttendEventResponse:
@@ -91,15 +91,15 @@ class AttendanceService(Service):
         # Verify that the organizer is the owner of the event
         event = self._dao.find_event_by_id(event_id)
         if not event:
-            return AttendEventResponse(message="Event no longer available.", code=404)
+            return AttendEventResponse(attended=False, message="Event no longer available.", code=404)
         if event.owner_id != organizer_id:
-            return AttendEventResponse(message="You are not the organizer of this event.", code=403)
+            return AttendEventResponse(attended=False, message="You are not the organizer of this event.", code=403)
         registration = self._dao.find_record_by_event_and_user(event_id, user_id)
         if not registration:
-            return AttendEventResponse(message="User is not registered for this event.", code=404)
+            return AttendEventResponse(attended=False, message="User is not registered for this event.", code=404)
         self._dao.update(registration.id, {"attendance_time": None})
         # TODO: Send message to message bus to notify the user that they have been marked as not attended
-        return AttendEventResponse(message="Successfully marked as not attended the event.", code=200)
+        return AttendEventResponse(attended=False, message="Successfully marked as not attended the event.", code=200)
     
     # Retrieves all registered users for an event.
     def get_registered_users(self, event_id: str) -> AttendanceRecordResponse:
@@ -129,3 +129,16 @@ class AttendanceService(Service):
         if not registration:
             return RegisterEventResponse(registered=False, message="User is not registered for this event.", code=200)
         return RegisterEventResponse(registered=True, message="User is registered for this event.", code=200)
+
+    # Checks a user's attendance status for an event.
+    def get_attendance_status(self, event_id: str, user_id: str) -> AttendEventResponse:
+        """Checks a user's attendance status for an event."""
+        event = self._dao.find_event_by_id(event_id)
+        if not event:
+            return AttendEventResponse(attended=False, message="Event no longer available.", code=404)
+        attendance = self._dao.find_record_by_event_and_user(event_id, user_id)
+        if not attendance:
+            return AttendEventResponse(attended=False, message="User is not registered for this event.", code=404)
+        if attendance.attendance_time is None:
+            return AttendEventResponse(attended=False, message="User has not attended the event.", code=200)
+        return AttendEventResponse(attended=True, message="User has attended the event.", code=200)
