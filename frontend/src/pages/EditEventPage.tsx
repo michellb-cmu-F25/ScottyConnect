@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
-import { getEvent, updateEvent, apiEventToStored } from '../services/eventApi'
+import { getEvent, updateEvent, apiEventToStored } from '../services/LifecycleService'
 import { storedToForm, EventForm, type EventFormData, type StoredEvent } from './CreateEventPage'
 import '../styles/CreateEvent.css'
 

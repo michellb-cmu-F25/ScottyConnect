@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
-import { getEvent, apiEventToStored } from '../services/eventApi'
+import { getEvent, apiEventToStored } from '../services/LifecycleService'
 import { loadEvents } from './CreateEventPage'
 import type { StoredEvent } from '../types/event'
 import '../styles/TaskBoard.css'

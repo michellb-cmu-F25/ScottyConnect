@@ -1,20 +1,6 @@
-import StorageUtil from '../common/StorageUtil'
+import { authHeaders } from './ServiceUtils'
+import { apiEventFromSnake, type EventFromAPI } from '../schemas/event'
 import type { StoredEvent } from '../types/event'
-
-export interface EventFromAPI {
-  id: string
-  title: string
-  description: string
-  date: string | null
-  startTime: string | null
-  endTime: string | null
-  location: string | null
-  capacity: number | null
-  status: 'draft' | 'published' | 'ended' | 'cancelled'
-  ownerId: string
-  createdAt: string
-  updatedAt: string
-}
 
 interface APIEventResponse {
   message: string
@@ -28,22 +14,7 @@ interface APIEventListResponse {
   code: number
 }
 
-function snakeToCamel(obj: Record<string, unknown>): EventFromAPI {
-  return {
-    id: obj.id as string,
-    title: obj.title as string,
-    description: obj.description as string,
-    date: (obj.date as string) ?? null,
-    startTime: (obj.start_time as string) ?? null,
-    endTime: (obj.end_time as string) ?? null,
-    location: (obj.location as string) ?? null,
-    capacity: (obj.capacity as number) ?? null,
-    status: obj.status as EventFromAPI['status'],
-    ownerId: obj.owner_id as string,
-    createdAt: obj.created_at as string,
-    updatedAt: obj.updated_at as string,
-  }
-}
+export type { EventFromAPI } from '../schemas/event'
 
 export function apiEventToStored(ev: EventFromAPI): StoredEvent {
   return {
@@ -59,15 +30,6 @@ export function apiEventToStored(ev: EventFromAPI): StoredEvent {
     ownerId: ev.ownerId,
     createdAt: ev.createdAt,
   }
-}
-
-function authHeaders(): Record<string, string> {
-  const token = StorageUtil.getToken()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  return headers
 }
 
 export async function createEvent(
@@ -101,7 +63,7 @@ export async function createEvent(
   if (!res.ok || !data.event) {
     throw new Error(data.message || 'Failed to create event')
   }
-  return snakeToCamel(data.event)
+  return apiEventFromSnake(data.event)
 }
 
 export async function getEvent(eventId: string): Promise<EventFromAPI> {
@@ -110,7 +72,7 @@ export async function getEvent(eventId: string): Promise<EventFromAPI> {
   if (!res.ok || !data.event) {
     throw new Error(data.message || 'Event not found')
   }
-  return snakeToCamel(data.event)
+  return apiEventFromSnake(data.event)
 }
 
 export async function listMyEvents(): Promise<EventFromAPI[]> {
@@ -121,7 +83,7 @@ export async function listMyEvents(): Promise<EventFromAPI[]> {
   if (!res.ok) {
     throw new Error(data.message || 'Failed to load your events')
   }
-  return data.events.map((e) => snakeToCamel(e))
+  return data.events.map((e) => apiEventFromSnake(e))
 }
 
 export async function listPublishedEvents(): Promise<EventFromAPI[]> {
@@ -130,7 +92,7 @@ export async function listPublishedEvents(): Promise<EventFromAPI[]> {
   if (!res.ok) {
     throw new Error(data.message || 'Failed to load events')
   }
-  return data.events.map((e) => snakeToCamel(e))
+  return data.events.map((e) => apiEventFromSnake(e))
 }
 
 export async function updateEvent(
@@ -164,7 +126,7 @@ export async function updateEvent(
   if (!res.ok || !data.event) {
     throw new Error(data.message || 'Failed to update event')
   }
-  return snakeToCamel(data.event)
+  return apiEventFromSnake(data.event)
 }
 
 export async function deleteEventApi(eventId: string): Promise<void> {
@@ -191,5 +153,5 @@ export async function transitionEventApi(
   if (!res.ok || !data.event) {
     throw new Error(data.message || 'Failed to update event status')
   }
-  return snakeToCamel(data.event)
+  return apiEventFromSnake(data.event)
 }

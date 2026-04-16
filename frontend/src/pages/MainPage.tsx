@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import StorageUtil, { type RecommendationStrategy } from '../common/StorageUtil'
-import { listPublishedEvents, listMyEvents, apiEventToStored } from '../services/eventApi'
+import { listPublishedEvents, listMyEvents, apiEventToStored } from '../services/LifecycleService'
 import {
   getRecommendations,
   getUserPreference,
   setUserPreference,
-} from '../services/recommendationApi'
+} from '../services/RecommendationService'
 import RecommendationSettingsModal from '../components/RecommendationSettingsModal'
 import type { StoredEvent } from '../types/event'
 import '../styles/Main.css'
@@ -222,16 +222,18 @@ export default function MainPage() {
           <ul className="main-event-list">
             {events.map((ev) => (
               <li key={ev.id}>
-                <article className="main-event-card">
-                  <div className="main-event-card-body">
-                    <h3 className="main-event-title">{ev.title}</h3>
-                    <p className="main-event-meta">{formatEventDate(ev)}</p>
-                    {ev.location && <p className="main-event-meta">{ev.location}</p>}
-                  </div>
-                  <div className="main-event-card-aside">
-                    <span className="main-event-badge">{formatSpots(ev)}</span>
-                  </div>
-                </article>
+                <Link to={`/events/${ev.id}`} className="main-event-link">
+                  <article className="main-event-card">
+                    <div className="main-event-card-body">
+                      <h3 className="main-event-title">{ev.title}</h3>
+                      <p className="main-event-meta">{formatEventDate(ev)}</p>
+                      {ev.location && <p className="main-event-meta">{ev.location}</p>}
+                    </div>
+                    <div className="main-event-card-aside">
+                      <span className="main-event-badge">{formatSpots(ev)}</span>
+                    </div>
+                  </article>
+                </Link>
               </li>
             ))}
           </ul>

@@ -5,7 +5,7 @@ import {
   apiEventToStored,
   deleteEventApi,
   transitionEventApi,
-} from '../services/eventApi'
+} from '../services/LifecycleService'
 import { loadEvents, type StoredEvent } from './CreateEventPage'
 import StorageUtil from '../common/StorageUtil'
 import '../styles/MyEvents.css'

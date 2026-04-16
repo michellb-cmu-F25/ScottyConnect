@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createEvent as createEventAPI } from '../services/eventApi'
+import { createEvent as createEventAPI } from '../services/LifecycleService'
 import type { EventFormData, StoredEvent } from '../types/event'
 import '../styles/CreateEvent.css'
 
