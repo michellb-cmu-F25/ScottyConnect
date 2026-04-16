@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getAllTags, getUserTags, setUserTags, type Tag } from '../services/recommendationApi'
+import { getAllTags, getUserTags, setUserTags, type Tag } from '../services/RecommendationService'
 
 interface RecommendationSettingsModalProps {
   isOpen: boolean

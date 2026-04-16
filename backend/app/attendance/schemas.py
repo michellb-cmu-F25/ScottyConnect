@@ -14,6 +14,7 @@ class RegisterEventResponse(BaseModel):
 
 # Attend event response schema
 class AttendEventResponse(BaseModel):
+    attended: bool
     message: str
     code: int
 

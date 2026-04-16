@@ -191,6 +191,22 @@
   gap: 12px;
 }
 
+.main-event-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius);
+}
+
+.main-event-link:focus-visible {
+  outline: none;
+}
+
+.main-event-link:focus-visible .main-event-card {
+  outline: 2px solid var(--carnegie-red);
+  outline-offset: 2px;
+}
+
 .main-event-card {
   display: flex;
   align-items: flex-start;

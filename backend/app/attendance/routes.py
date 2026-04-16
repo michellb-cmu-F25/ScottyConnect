@@ -53,6 +53,17 @@ def get_attended_users(event_id: str):
     response = get_attendance_service().get_attended_users(event_id)
     return jsonify(response.model_dump()), response.code
 
+@attendance.route("/attend/events/<event_id>", methods=["GET"])
+@require_auth
+@doc(
+    response=AttendEventResponse,
+    description="Check self attendance status for an event",
+    tags=["attendance"],
+    success_status=200,
+)
+def get_attendance_status(event_id: str):
+    response = get_attendance_service().get_attendance_status(event_id, g.user_id)
+    return jsonify(response.model_dump()), response.code
 
 @attendance.route("/register/events/<event_id>", methods=["POST"])
 @require_auth

@@ -328,7 +328,7 @@ export default function MyMeetingsPage() {
         ) : (
           displayed.map(appt => {
             const isSender = appt.sender_id === user?.id
-            const meta = getStatusMeta(appt)
+            // const meta = getStatusMeta(appt)
 
             return (
               <article key={appt.id} className={[

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, Navigate } from 'react-router-dom'
-import { getEvent, apiEventToStored } from '../services/eventApi'
+import { getEvent, apiEventToStored } from '../services/LifecycleService'
 import type { StoredEvent } from '../types/event'
 import '../styles/EventConfirmation.css'
 

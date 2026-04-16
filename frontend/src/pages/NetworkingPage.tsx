@@ -28,7 +28,7 @@ export default function NetworkingPage() {
     const cached = sessionStorage.getItem('scotty_networking_discover')
     return cached ? JSON.parse(cached) : []
   })
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
+  const [/* appointments */, setAppointments] = useState<Appointment[]>(() => {
     const cached = sessionStorage.getItem('scotty_networking_appointments')
     return cached ? JSON.parse(cached) : []
   })
@@ -290,7 +290,7 @@ export default function NetworkingPage() {
     }
   }
 
-  async function handleRespond(inviteId: string, accept: boolean) {
+  /* async function handleRespond(inviteId: string, accept: boolean) {
     const user = StorageUtil.getUser()
     if (!user) return
 
@@ -319,9 +319,9 @@ export default function NetworkingPage() {
       setMessage(errorMessage)
       showAlertBox('error', errorMessage)
     }
-  }
+  } */
 
-  async function handleCancelInvite(inviteId: string) {
+  /* async function handleCancelInvite(inviteId: string) {
     const user = StorageUtil.getUser()
     if (!user || !user.id) return
 
@@ -349,7 +349,7 @@ export default function NetworkingPage() {
       setMessage(errorMessage)
       showAlertBox('error', errorMessage)
     }
-  }
+  } */
 
   if (sessionError) return (
     <div className="networking-page">
