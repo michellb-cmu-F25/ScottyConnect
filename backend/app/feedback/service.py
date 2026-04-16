@@ -30,7 +30,7 @@ class FeedbackService(Service):
     def __init__(self, feedback_dao: FeedbackDAO | None = None) -> None:
         super().__init__()
         self._dao = feedback_dao or FeedbackDAO()
-        # Subscribe to lifecycle events when events end
+        # Subscribe to lifecycle events to be notified when events end.
         self.subscribeToMessages([MessageType.LIFECYCLE_MESSAGE])
 
     @staticmethod
@@ -38,29 +38,31 @@ class FeedbackService(Service):
         return PublicFeedback(
             id=feedback.id,
             event_id=feedback.event_id,
+            participant_id=feedback.participant_id,
             rating=feedback.rating,
             comment=feedback.comment,
             created_at=feedback.created_at,
         )
 
+    # Submits feedback for an event on behalf of an authenticated attendee.
     def submit_feedback(
         self, event_id: str, participant_id: str, req: SubmitFeedbackRequest
     ) -> FeedbackResponse:
-        # feedback window must be open
+        # Gate 1: feedback window must be open for this event.
         if not self._dao.is_feedback_enabled(event_id):
             return FeedbackResponse(
                 message="Feedback is not yet available for this event.",
                 feedback=None,
                 code=403,
             )
-        # confirmed attendee
+        # Gate 2: the user must be in the eligible pool (confirmed attendee).
         if participant_id not in self._dao.get_eligible_user_ids(event_id):
             return FeedbackResponse(
                 message="You must have attended the event to submit feedback.",
                 feedback=None,
                 code=403,
             )
-        # no duplicate submissions
+        # Gate 3: prevent duplicate submissions.
         if self._dao.find_by_event_and_participant(event_id, participant_id):
             return FeedbackResponse(
                 message="You have already submitted feedback for this event.",
@@ -96,7 +98,8 @@ class FeedbackService(Service):
             code=201,
         )
 
-    # whether feedback is open for an event and whether this user is eligible for frontend feedback UI
+    # Returns whether feedback is open for an event and whether this user is eligible.
+    # The frontend calls this to decide whether to show the feedback UI.
     def get_feedback_status(self, event_id: str, user_id: str) -> FeedbackStatusResponse:
         enabled = self._dao.is_feedback_enabled(event_id)
         eligible = user_id in self._dao.get_eligible_user_ids(event_id) if enabled else False
@@ -107,7 +110,7 @@ class FeedbackService(Service):
             code=200,
         )
 
-    # user's own feedback for a specific event.
+    # Retrieves the current user's own feedback for a specific event.
     def get_my_event_feedback(self, event_id: str, user_id: str) -> FeedbackResponse:
         feedback = self._dao.find_by_event_and_participant(event_id, user_id)
         if not feedback:
@@ -122,7 +125,7 @@ class FeedbackService(Service):
             code=200,
         )
 
-    # all feedback for an event, Responses are anonymized (no participant_id).
+    # Retrieves all feedback for an event.
     def get_feedbacks(self, event_id: str) -> FeedbackListResponse:
         feedbacks = self._dao.find_by_event(event_id)
         return FeedbackListResponse(
@@ -131,7 +134,7 @@ class FeedbackService(Service):
             code=200,
         )
 
-    # all feedback by the current user
+    # Retrieves all feedback submitted by the current user.
     def get_my_feedbacks(self, user_id: str) -> FeedbackListResponse:
         feedbacks = self._dao.find_by_user(user_id)
         return FeedbackListResponse(
@@ -140,8 +143,8 @@ class FeedbackService(Service):
             code=200,
         )
 
-    # Hincoming messages from event bus
-    # todo?
+    # Handles incoming messages from the event bus.
+    # When the lifecycle module transitions an event to "ended":
     #   1. Find all confirmed attendees for that event.
     #   2. Persist a feedback session so the feedback window is open for those users.
     #   3. Publish a FEEDBACK_MESSAGE so the Notification module can alert eligible users.
@@ -155,7 +158,6 @@ class FeedbackService(Service):
                 eligible_user_ids = self._dao.find_attendees_by_event(event_id)
                 self._dao.enable_feedback(event_id, eligible_user_ids)
 
-                # Notify other modules that feedback is now open for this event
                 MessageBus.publish(
                     Message(
                         MessageType.FEEDBACK_MESSAGE,

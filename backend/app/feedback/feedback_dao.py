@@ -37,7 +37,8 @@ class FeedbackDAO:
             payload["id"] = str(oid)
         return Feedback.model_validate(payload)
 
-    # Feedback
+    # --- Feedback documents ---
+
     # Inserts a new feedback document into the database.
     def insert(self, feedback: Feedback) -> Feedback:
         doc = feedback.model_dump(exclude={"id"}, exclude_none=True)
@@ -55,16 +56,16 @@ class FeedbackDAO:
         return [f for doc in cursor if (f := self._to_feedback(doc)) is not None]
 
     # Finds a user's own feedback for a specific event.
-    # GET query so a user can view the feedback they submitted for an event, Also submit_feedback to detect duplicate submissions.
+    # Primary use: GET query so a user can view the feedback they submitted for an event.
+    # Also used internally by submit_feedback to detect duplicate submissions.
     def find_by_event_and_participant(self, event_id: str, participant_id: str) -> Feedback | None:
         doc = self._col.find_one({"event_id": event_id, "participant_id": participant_id})
         return self._to_feedback(doc)
 
+    # --- Feedback sessions (tracks which events have feedback open and for whom) ---
 
-
-    # Feedback sessions
-
-    # when event ended, open feedback window for an event by storing the list of eligible user IDs.
+    # Opens the feedback window for an event by storing the list of eligible user IDs.
+    # Called when the lifecycle module transitions an event to "ended".
     def enable_feedback(self, event_id: str, eligible_user_ids: list[str]) -> None:
         self._sessions_col.update_one(
             {"event_id": event_id},
@@ -76,19 +77,22 @@ class FeedbackDAO:
             upsert=True,
         )
 
-    # whether the feedback window is open
+    # Checks whether the feedback window is open for a given event.
     def is_feedback_enabled(self, event_id: str) -> bool:
         doc = self._sessions_col.find_one({"event_id": event_id})
         return doc is not None
 
-    # list of user IDs who are eligible to submit feedback
+    # Returns the list of user IDs who are eligible to submit feedback for an event.
     def get_eligible_user_ids(self, event_id: str) -> list[str]:
         doc = self._sessions_col.find_one({"event_id": event_id})
         if doc is None:
             return []
         return doc.get("eligible_user_ids", [])
 
-    # Attendance cross-checks
+    # --- Attendance cross-checks ---
+
+    # Returns the user IDs of all confirmed attendees for an event.
+    # These are the users for whom the feedback window is opened when an event ends.
     def find_attendees_by_event(self, event_id: str) -> list[str]:
         cursor = self._attendance_col.find({
             "event_id": event_id,
@@ -101,6 +105,8 @@ class FeedbackDAO:
                 user_ids.append(user_id)
         return user_ids
 
+    # Checks whether a single user has a confirmed attendance record for an event.
+    # Used as the eligibility gate when a user attempts to submit feedback.
     def find_attendance_record(self, event_id: str, participant_id: str) -> bool:
         doc = self._attendance_col.find_one({
             "event_id": event_id,
