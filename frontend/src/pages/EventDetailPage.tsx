@@ -1,0 +1,236 @@
+import { useEffect, useState } from 'react'
+import { Link, Navigate, useParams } from 'react-router-dom'
+import { getEvent, apiEventToStored } from '../services/LifecycleService'
+import {
+  getRegistrationStatus,
+  registerEvent,
+  unregisterEvent,
+} from '../services/AttendanceService'
+import type { StoredEvent } from '../types/event'
+import '../styles/EventDetail.css'
+
+// Labels for the event status
+const STATUS_LABELS: Record<StoredEvent['status'], string> = {
+  draft: 'Draft',
+  published: 'Published',
+  ended: 'Ended',
+  cancelled: 'Cancelled',
+}
+
+// Format the date and time of the event
+function formatDateTime(ev: StoredEvent): string {
+  const d = new Date(ev.date + 'T00:00:00')
+  const dateLabel = d.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+
+  if (!ev.startTime) return dateLabel
+
+  const [startH, startM] = ev.startTime.split(':')
+  const startHour = parseInt(startH, 10)
+  const startAmpm = startHour >= 12 ? 'PM' : 'AM'
+  const start12 = startHour % 12 || 12
+  let timeLabel = `${start12}:${startM} ${startAmpm}`
+
+  if (ev.endTime) {
+    const [endH, endM] = ev.endTime.split(':')
+    const endHour = parseInt(endH, 10)
+    const endAmpm = endHour >= 12 ? 'PM' : 'AM'
+    const end12 = endHour % 12 || 12
+    timeLabel += ` - ${end12}:${endM} ${endAmpm}`
+  }
+
+  return `${dateLabel} · ${timeLabel}`
+}
+
+// Format the capacity of the event
+function formatCapacity(capacity: number | null): string {
+  if (capacity == null) return 'Open registration'
+  return `${capacity} spots available`
+}
+
+export default function EventDetailPage() {
+  // Get the event ID from the URL
+  const { id } = useParams<{ id: string }>()
+  
+  // State variables
+  const [event, setEvent] = useState<StoredEvent | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [isRegistered, setIsRegistered] = useState(false)
+  const [registrationLoading, setRegistrationLoading] = useState(true)
+  const [registrationError, setRegistrationError] = useState('')
+  const [registrationSaving, setRegistrationSaving] = useState(false)
+  const [registerSuccessMessage, setRegisterSuccessMessage] = useState('')
+
+  // Load event details on mount
+  useEffect(() => {
+    if (!id) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const ev = await getEvent(id)
+        if (!cancelled) {
+          setEvent(apiEventToStored(ev))
+          setLoadError('')
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setEvent(null)
+          setLoadError(e instanceof Error ? e.message : 'Failed to load event details')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  // Load registration status on mount
+  useEffect(() => {
+    if (!id) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const registered = await getRegistrationStatus(id)
+        if (!cancelled) {
+          setIsRegistered(registered)
+          setRegistrationError('')
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setRegistrationError(e instanceof Error ? e.message : 'Failed to load registration status')
+        }
+      } finally {
+        if (!cancelled) setRegistrationLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  
+  // Handles the registration click event
+  async function handleRegistrationClick() {
+    if (!id || registrationSaving) return
+
+    setRegistrationSaving(true)
+    setRegistrationError('')
+    try {
+      if (isRegistered) {
+        const registered = await unregisterEvent(id)
+        setIsRegistered(registered)
+        setRegisterSuccessMessage('Successfully unregistered from the event.')
+      } else {
+        const registered = await registerEvent(id)
+        setIsRegistered(registered)
+        setRegisterSuccessMessage('Successfully registered for the event.')
+      }
+    } catch (e) {
+      setRegistrationError(e instanceof Error ? e.message : 'Failed to update registration')
+    } finally {
+      setRegistrationSaving(false)
+    }
+  }
+
+  // Determine if the event is published
+  const isPublished = event?.status === 'published'
+
+  // Determine if the registration button is disabled
+  const isRegistrationButtonDisabled =
+    !isPublished || registrationLoading || registrationSaving || loading || !!loadError
+
+  // Determine the label for the registration button
+  const registrationButtonLabel = isPublished
+    ? isRegistered
+      ? 'Cancel RSVP'
+      : 'RSVP'
+    : 'RSVP Unavailable'
+
+  // Render the event detail page
+  return (
+    <div className="event-detail-page">
+      <header className="event-detail-header">
+        <div className="event-detail-header-inner">
+          <Link to="/mainpage" className="event-detail-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back to home
+          </Link>
+        </div>
+      </header>
+
+      <main className="event-detail-content">
+        {loading && <p className="event-detail-muted">Loading event details...</p>}
+
+        {!loading && loadError && (
+          <div className="event-detail-alert" role="alert">
+            <p>{loadError}</p>
+            <Link to="/mainpage" className="event-detail-link">
+              Return to home
+            </Link>
+          </div>
+        )}
+
+        {!loading && !loadError && event && (
+          <article className="event-detail-card">
+            <div className="event-detail-top">
+              <h1 className="event-detail-title">{event.title}</h1>
+              <span className={`event-detail-status event-detail-status-${event.status}`}>
+                {STATUS_LABELS[event.status]}
+              </span>
+            </div>
+
+            
+
+            <div className="event-detail-actions">
+              <button
+                type="button"
+                className={`event-detail-register-btn ${isRegistered ? 'unregister' : ''}`}
+                disabled={isRegistrationButtonDisabled}
+                onClick={handleRegistrationClick}
+              >
+                {registrationSaving ? 'Saving...' : registrationButtonLabel}
+              </button>
+            </div>
+
+            {registerSuccessMessage && <div className="event-detail-success-message">{registerSuccessMessage}</div>}
+            {registrationError && <p className="event-detail-inline-error">{registrationError}</p>}
+
+            <p className="event-detail-description">{event.description}</p>
+
+            <dl className="event-detail-grid">
+              <div className="event-detail-item">
+                <dt>Date and time</dt>
+                <dd>{formatDateTime(event)}</dd>
+              </div>
+              <div className="event-detail-item">
+                <dt>Location</dt>
+                <dd>{event.location || 'TBA'}</dd>
+              </div>
+              <div className="event-detail-item">
+                <dt>Capacity</dt>
+                <dd>{formatCapacity(event.capacity)}</dd>
+              </div>
+            </dl>
+          </article>
+        )}
+      </main>
+
+      <footer className="event-detail-footer">
+        <p>ScottyConnect · Carnegie Mellon University</p>
+      </footer>
+    </div>
+  )
+}
