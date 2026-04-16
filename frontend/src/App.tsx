@@ -20,10 +20,26 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify" element={<VerificationPage />} />
-        <Route path="/mainpage" element={<MainPage />} />
-        <Route path="/networking" element={<NetworkingPage />} />
-        <Route path="/my-meetings" element={<MyMeetingsPage />} />
-        <Route path="/feedback" element={<PlaceholderPage title="Feedback" />} />
+        <Route path="/mainpage" element={
+          <ProtectedRoute>
+            <MainPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/networking" element={
+          <ProtectedRoute>
+            <NetworkingPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/my-meetings" element={
+          <ProtectedRoute>
+            <MyMeetingsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/feedback" element={
+          <ProtectedRoute>
+            <PlaceholderPage title="Feedback" />
+          </ProtectedRoute>
+        } />
         <Route
           path="/publish-event"
           element={
@@ -32,7 +48,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/attendance" element={<PlaceholderPage title="Attendance" />} />
         <Route
           path="/my-events"
           element={
@@ -49,8 +64,16 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/events/:eventId/tasks" element={<TaskBoardPage />} />
-        <Route path="/event-published" element={<EventConfirmationPage />} />
+        <Route path="/events/:eventId/tasks" element={
+          <ProtectedRoute>
+            <TaskBoardPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/event-published" element={
+          <ProtectedRoute>
+            <EventConfirmationPage />
+          </ProtectedRoute>
+        } />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

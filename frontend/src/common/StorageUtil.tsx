@@ -49,4 +49,13 @@ export default class StorageUtil {
         return DEFAULT_STRATEGY
     }
 
+    // Global Operations
+    static clearAll() {
+        localStorage.removeItem(USER_KEY)
+        localStorage.removeItem(EMAIL_KEY)
+        localStorage.removeItem(ID_KEY)
+        localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(STRATEGY_KEY)
+    }
+
 }

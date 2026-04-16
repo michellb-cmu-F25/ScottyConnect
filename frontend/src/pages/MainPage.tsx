@@ -71,6 +71,10 @@ export default function MainPage() {
     }
   }
 
+  function handleLogout() {
+    StorageUtil.clearAll()
+  }
+
   // Sync local strategy with the backend-stored preference on login.
   useEffect(() => {
     if (!isLoggedIn || !userId) return
@@ -140,7 +144,7 @@ export default function MainPage() {
     <div className="main-page">
       <header className="main-header">
         <div className="main-header-inner">
-          <Link to="/" className="main-brand">
+          <Link to="/mainpage" className="main-brand">
             <img
               src="/scotty_connect_square.png"
               alt=""
@@ -150,8 +154,8 @@ export default function MainPage() {
             />
             <span className="main-brand-text">ScottyConnect</span>
           </Link>
-          <Link to="/my-events" className="main-nav-link">
-            My Events{myCreatedCount != null && myCreatedCount > 0 && ` (${myCreatedCount})`}
+          <Link to="/" className="main-nav-link" onClick={handleLogout}>
+            Logout
           </Link>
         </div>
       </header>
@@ -245,6 +249,19 @@ export default function MainPage() {
           </div>
           <ul className="main-action-grid">
             <li>
+              <Link to="/my-events" className="main-action-card">
+                <span className="main-action-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                    <rect x="3" y="5" width="18" height="16" rx="2" />
+                    <path d="M16 3v4M8 3v4M3 10h18" />
+                    <path d="M8 14h2M12 14h2M16 14h2M8 17h2M12 17h2" />
+                  </svg>
+                </span>
+                <span className="main-action-label">My Events{myCreatedCount != null && myCreatedCount > 0 && ` (${myCreatedCount})`}</span>
+                <span className="main-action-hint">Events you organized</span>
+              </Link>
+            </li>
+            <li>
               <Link to="/publish-event" className="main-action-card">
                 <span className="main-action-icon" aria-hidden>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
@@ -278,21 +295,6 @@ export default function MainPage() {
                 </span>
                 <span className="main-action-label">Feedback</span>
                 <span className="main-action-hint">Reviews and suggestions</span>
-              </Link>
-            </li>
-
-            <li>
-              <Link to="/attendance" className="main-action-card">
-                <span className="main-action-icon" aria-hidden>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </span>
-                <span className="main-action-label">Attendance</span>
-                <span className="main-action-hint">Events you organized</span>
               </Link>
             </li>
           </ul>
