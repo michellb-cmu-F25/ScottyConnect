@@ -113,9 +113,15 @@
   color: var(--iron-gray);
 }
 
+.main-strategy-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .main-strategy-selector {
   display: inline-flex;
-  margin-top: 12px;
   background: var(--white);
   border: 1px solid var(--steel-gray);
   border-radius: var(--radius-sm);
@@ -150,6 +156,30 @@
 .main-strategy-option:focus-visible {
   outline: 2px solid var(--carnegie-red);
   outline-offset: 2px;
+}
+
+.main-strategy-edit-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--iron-gray);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+
+.main-strategy-edit-btn:hover {
+  color: var(--carnegie-red);
+}
+
+.main-strategy-edit-btn:focus-visible {
+  outline: 2px solid var(--carnegie-red);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .main-event-list {

@@ -2,9 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import StorageUtil, { type RecommendationStrategy } from '../common/StorageUtil'
 import { listPublishedEvents, listMyEvents, apiEventToStored } from '../services/eventApi'
-import { getRecommendations } from '../services/recommendationApi'
+import {
+  getRecommendations,
+  getUserPreference,
+  setUserPreference,
+} from '../services/recommendationApi'
+import RecommendationSettingsModal from '../components/RecommendationSettingsModal'
 import type { StoredEvent } from '../types/event'
 import '../styles/Main.css'
+import '../styles/Settings.css'
 
 const STRATEGY_OPTIONS: { value: RecommendationStrategy; label: string }[] = [
   { value: 'tag', label: 'Tag match' },
@@ -51,11 +57,39 @@ export default function MainPage() {
   const [strategy, setStrategy] = useState<RecommendationStrategy>(() =>
     StorageUtil.getStrategy(),
   )
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [refreshNonce, setRefreshNonce] = useState(0)
 
   function handleStrategyChange(next: RecommendationStrategy) {
     setStrategy(next)
     StorageUtil.setStrategy(next)
+    if (isLoggedIn && userId) {
+      // Fire-and-forget persist; local UI already reflects the choice.
+      setUserPreference(userId, next).catch(() => {
+        // Network/server issue — keep local selection; user can retry via settings.
+      })
+    }
   }
+
+  // Sync local strategy with the backend-stored preference on login.
+  useEffect(() => {
+    if (!isLoggedIn || !userId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const serverStrategy = await getUserPreference(userId)
+        if (!cancelled) {
+          setStrategy(serverStrategy)
+          StorageUtil.setStrategy(serverStrategy)
+        }
+      } catch {
+        // Keep whatever is in localStorage if the fetch fails.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isLoggedIn, userId])
 
   useEffect(() => {
     let cancelled = false
@@ -81,7 +115,7 @@ export default function MainPage() {
     return () => {
       cancelled = true
     }
-  }, [isLoggedIn, userId, strategy])
+  }, [isLoggedIn, userId, strategy, refreshNonce])
 
   useEffect(() => {
     if (!StorageUtil.getToken()) {
@@ -122,6 +156,18 @@ export default function MainPage() {
         </div>
       </header>
 
+      {isLoggedIn && userId && (
+        <RecommendationSettingsModal
+          isOpen={settingsOpen}
+          userId={userId}
+          onClose={() => setSettingsOpen(false)}
+          onSaved={() => {
+            // Re-fetch recommendations to reflect the new tag set.
+            setRefreshNonce((n) => n + 1)
+          }}
+        />
+      )}
+
       <main className="main-content">
 
         <section className="main-section" aria-labelledby="events-heading">
@@ -135,25 +181,36 @@ export default function MainPage() {
                 : 'Open registrations and upcoming sessions'}
             </p>
             {isLoggedIn && (
-              <div
-                className="main-strategy-selector"
-                role="radiogroup"
-                aria-label="Recommendation strategy"
-              >
-                {STRATEGY_OPTIONS.map((opt) => (
+              <div className="main-strategy-row">
+                <div
+                  className="main-strategy-selector"
+                  role="radiogroup"
+                  aria-label="Recommendation strategy"
+                >
+                  {STRATEGY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={strategy === opt.value}
+                      className={`main-strategy-option${
+                        strategy === opt.value ? ' is-active' : ''
+                      }`}
+                      onClick={() => handleStrategyChange(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {strategy === 'tag' && (
                   <button
-                    key={opt.value}
                     type="button"
-                    role="radio"
-                    aria-checked={strategy === opt.value}
-                    className={`main-strategy-option${
-                      strategy === opt.value ? ' is-active' : ''
-                    }`}
-                    onClick={() => handleStrategyChange(opt.value)}
+                    className="main-strategy-edit-btn"
+                    onClick={() => setSettingsOpen(true)}
                   >
-                    {opt.label}
+                    View / set tag preferences
                   </button>
-                ))}
+                )}
               </div>
             )}
           </div>
