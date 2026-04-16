@@ -23,15 +23,24 @@ class UserProfileDAO:
 
     def add_tag(self, user_tag: UserTag) -> UserTag:
         """Associate a tag with a user (idempotent on user_id + tag_id)."""
-        if self._col.find_one({"user_id": ObjectId(user_tag.user_id), "tag_id": ObjectId(user_tag.tag_id)}):
+        user_oid = ObjectId(user_tag.user_id)
+        tag_oid = ObjectId(user_tag.tag_id)
+        if self._col.find_one({"user_id": user_oid, "tag_id": tag_oid}):
             return user_tag
         doc = user_tag.model_dump(exclude={"id"}, exclude_none=True)
+        doc["user_id"] = user_oid
+        doc["tag_id"] = tag_oid
         result = self._col.insert_one(doc)
         return user_tag.model_copy(update={"id": str(result.inserted_id)})
 
     def remove_tag(self, user_id: str, tag_id: str) -> bool:
         result = self._col.delete_one({"user_id": ObjectId(user_id), "tag_id": ObjectId(tag_id)})
         return result.deleted_count > 0
+
+    def remove_all_tags(self, user_id: str) -> int:
+        """Remove every tag association for the given user. Returns the number deleted."""
+        result = self._col.delete_many({"user_id": ObjectId(user_id)})
+        return result.deleted_count
 
     @staticmethod
     def _to_user_tag(doc: dict) -> UserTag:
