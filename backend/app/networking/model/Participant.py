@@ -4,65 +4,88 @@ Defines the Colleagues in the Mediator pattern (Student and Alumni).
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Protocol
+from datetime import datetime
+from typing import List, Protocol, Union
 
 from pydantic import BaseModel
 
 
+# Mediator interface to avoid circular dependencies.
 class ICoffeeChatMediator(Protocol):
-    """Mediator interface to avoid circular dependencies."""
-    def send_invite(self, sender: 'Participant', receiver_id: str, timeslot: str) -> bool:
+    def dispatch_invite(
+        self,
+        sender: 'Participant',
+        receiver_id: str,
+        scheduled_at: datetime,
+        receiver_role: str,
+    ) -> bool:
         ...
-    def respond_to_invite(self, responder: 'Participant', invite_id: str, accept: bool) -> bool:
+    def finalize_invite_response(self, responder: 'Participant', invite_id: str, accept: bool) -> bool:
+        ...
+    def validate_availability(self, user_id: str, scheduled_at: datetime) -> bool:
         ...
 
 
+# Abstract base class for all coffee chat participants.
 class Participant(BaseModel, ABC):
-    """Abstract base class for all coffee chat participants."""
     user_id: str
     username: str
     
     # Injected mediator (private attribute to avoid Pydantic validation issues)
     _mediator: ICoffeeChatMediator | None = None
     
+    # Inject the mediator instance.
     def set_mediator(self, mediator: ICoffeeChatMediator):
-        """Inject the mediator instance."""
         self._mediator = mediator
 
+    # Return the participant's specific role.
     @abstractmethod
     def get_role(self) -> str:
-        """Return the participant's specific role."""
         pass
 
-    def send_invite(self, receiver_id: str, timeslot: str) -> bool:
-        """Delegate invitation sending to the mediator."""
+    # Delegate invitation sending to the mediator.
+    def initiate_chat(self, receiver_id: str, scheduled_at: datetime, receiver_role: str) -> bool:
         if self._mediator:
-            return self._mediator.send_invite(self, receiver_id, timeslot)
+            return self._mediator.dispatch_invite(self, receiver_id, scheduled_at, receiver_role)
+        return False
+
+    # Delegate invitation acceptance to the mediator.
+    def accept_chat(self, invite_id: str) -> bool:
+        if self._mediator:
+            return self._mediator.finalize_invite_response(self, invite_id, accept=True)
+        return False
+
+    # Delegate invitation declination to the mediator.
+    def decline_chat(self, invite_id: str) -> bool:
+        if self._mediator:
+            return self._mediator.finalize_invite_response(self, invite_id, accept=False)
         return False
 
 
+# Concrete Participant representing a Student.
 class StudentAttendee(Participant):
-    """Concrete Participant representing a Student."""
     def get_role(self) -> str:
         return "STUDENT"
 
 
+# Concrete Participant representing an Alumni.
 class AlumniAttendee(Participant):
-    """Concrete Participant representing an Alumni."""
     def get_role(self) -> str:
         return "ALUMNI"
 
 
+# Factory to create participants based on system roles.
 class ParticipantFactory:
-    """Factory to create participants based on system roles."""
     
     _ROLE_MAP = {
         "STUDENT": StudentAttendee,
         "ALUMNI": AlumniAttendee
     }
 
+    # Creates the appropriate Participant subclass for a given role.
     @staticmethod
     def create(user_id: str, username: str, role: str) -> Participant:
-        """Creates the appropriate Participant subclass for a given role."""
-        cls = ParticipantFactory._ROLE_MAP.get(role, AlumniAttendee)
+        cls = ParticipantFactory._ROLE_MAP.get(role)
+        if cls is None:
+            raise ValueError(f"Invalid role: {role}. Supported roles: {list(ParticipantFactory._ROLE_MAP.keys())}")
         return cls(user_id=user_id, username=username)

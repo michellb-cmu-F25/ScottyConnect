@@ -1,18 +1,22 @@
 """
 Popularity-based recommendation strategy.
 
-Stub — requires an attendance / popularity signal that is not yet modelled.
-Returns an empty list until that data source is added.
+Ranks events by the number of users who actually attended (attendance_time set).
+Reads attendance data through the recommendation-owned AttendanceSignalDAO so
+the strategy has no dependency on the attendance service code.
+
+Returns the top `limit` event_ids sorted by descending attendance count.
 """
 
-from app.recommendation.dao.event_tag_dao import EventTagDAO
+from app.recommendation.dao.attendance_signal_dao import AttendanceSignalDAO
 from app.recommendation.strategies.base import RecommendationStrategy
 
 
 class PopularityBasedRecommendationStrategy(RecommendationStrategy):
-    def __init__(self, event_tag_dao: EventTagDAO) -> None:
-        self._event_tag_dao = event_tag_dao
+    def __init__(self, attendance_signal_dao: AttendanceSignalDAO) -> None:
+        self._attendance_signal_dao = attendance_signal_dao
 
     def recommend(self, user_id: str, limit: int = 20) -> list[str]:
-        # TODO: integrate AttendanceDAO once attendance data is available.
-        return []
+        scores = self._attendance_signal_dao.count_attendance_by_event()
+        sorted_ids = sorted(scores, key=lambda eid: scores[eid], reverse=True)
+        return sorted_ids[:limit]

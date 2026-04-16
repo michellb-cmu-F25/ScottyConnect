@@ -3,8 +3,14 @@
 Schemas for the Accounts service.
 """
 from datetime import datetime
+from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+
+class UserRole(str, Enum):
+    STUDENT = "STUDENT"
+    ALUMNI = "ALUMNI"
 
 
 # Register request schema
@@ -13,7 +19,17 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     confirm_password: str
-    role: str = "STUDENT"
+    role: UserRole  # Now required and validated
+
+    @field_validator('role', mode='before')
+    @classmethod
+    def validate_role(cls, v):
+        if isinstance(v, str):
+            try:
+                return UserRole(v)
+            except ValueError:
+                raise ValueError(f"Invalid role: {v}. Must be one of {[r.value for r in UserRole]}")
+        return v
 
 # Verify request schema
 class VerifyRequest(BaseModel):
@@ -32,7 +48,7 @@ class PublicUser(BaseModel):
     username: str
     email: str
     verified: bool
-    role: str
+    role: UserRole
     bio: str = ""
     tags: list[str] = []
     created_at: datetime

@@ -1,9 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import StorageUtil from '../common/StorageUtil'
+import StorageUtil, { type RecommendationStrategy } from '../common/StorageUtil'
 import { listPublishedEvents, listMyEvents, apiEventToStored } from '../services/eventApi'
+import {
+  getRecommendations,
+  getUserPreference,
+  setUserPreference,
+} from '../services/recommendationApi'
+import RecommendationSettingsModal from '../components/RecommendationSettingsModal'
 import type { StoredEvent } from '../types/event'
 import '../styles/Main.css'
+import '../styles/Settings.css'
+
+const STRATEGY_OPTIONS: { value: RecommendationStrategy; label: string }[] = [
+  { value: 'tag', label: 'Tag match' },
+  { value: 'popularity', label: 'Popular' },
+  { value: 'hybrid', label: 'For you' },
+]
 
 /** Convert HH:mm (24h) to h:mm AM/PM */
 function formatTime12h(hhmm: string): string {
@@ -35,18 +48,69 @@ function formatSpots(ev: StoredEvent): string {
 }
 
 export default function MainPage() {
-  const [publishedEvents, setPublishedEvents] = useState<StoredEvent[]>([])
+  const userId = StorageUtil.getUser().id
+  const isLoggedIn = !!userId && !!StorageUtil.getToken()
+
+  const [events, setEvents] = useState<StoredEvent[]>([])
   const [loadError, setLoadError] = useState('')
   const [myCreatedCount, setMyCreatedCount] = useState<number | null>(null)
+  const [strategy, setStrategy] = useState<RecommendationStrategy>(() =>
+    StorageUtil.getStrategy(),
+  )
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [refreshNonce, setRefreshNonce] = useState(0)
+
+  function handleStrategyChange(next: RecommendationStrategy) {
+    setStrategy(next)
+    StorageUtil.setStrategy(next)
+    if (isLoggedIn && userId) {
+      // Fire-and-forget persist; local UI already reflects the choice.
+      setUserPreference(userId, next).catch(() => {
+        // Network/server issue — keep local selection; user can retry via settings.
+      })
+    }
+  }
+
+  function handleLogout() {
+    StorageUtil.clearAll()
+  }
+
+  // Sync local strategy with the backend-stored preference on login.
+  useEffect(() => {
+    if (!isLoggedIn || !userId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const serverStrategy = await getUserPreference(userId)
+        if (!cancelled) {
+          setStrategy(serverStrategy)
+          StorageUtil.setStrategy(serverStrategy)
+        }
+      } catch {
+        // Keep whatever is in localStorage if the fetch fails.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isLoggedIn, userId])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const list = await listPublishedEvents()
-        if (!cancelled) {
-          setPublishedEvents(list.map(apiEventToStored))
-          setLoadError('')
+        if (isLoggedIn && userId) {
+          const list = await getRecommendations(userId, strategy, 20)
+          if (!cancelled) {
+            setEvents(list.map(apiEventToStored))
+            setLoadError('')
+          }
+        } else {
+          const list = await listPublishedEvents()
+          if (!cancelled) {
+            setEvents(list.map(apiEventToStored))
+            setLoadError('')
+          }
         }
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Failed to load events')
@@ -55,7 +119,7 @@ export default function MainPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isLoggedIn, userId, strategy, refreshNonce])
 
   useEffect(() => {
     if (!StorageUtil.getToken()) {
@@ -80,7 +144,7 @@ export default function MainPage() {
     <div className="main-page">
       <header className="main-header">
         <div className="main-header-inner">
-          <Link to="/" className="main-brand">
+          <Link to="/mainpage" className="main-brand">
             <img
               src="/scotty_connect_square.png"
               alt=""
@@ -90,24 +154,73 @@ export default function MainPage() {
             />
             <span className="main-brand-text">ScottyConnect</span>
           </Link>
-          <Link to="/my-events" className="main-nav-link">
-            My Events{myCreatedCount != null && myCreatedCount > 0 && ` (${myCreatedCount})`}
+          <Link to="/" className="main-nav-link" onClick={handleLogout}>
+            Logout
           </Link>
         </div>
       </header>
+
+      {isLoggedIn && userId && (
+        <RecommendationSettingsModal
+          isOpen={settingsOpen}
+          userId={userId}
+          onClose={() => setSettingsOpen(false)}
+          onSaved={() => {
+            // Re-fetch recommendations to reflect the new tag set.
+            setRefreshNonce((n) => n + 1)
+          }}
+        />
+      )}
 
       <main className="main-content">
 
         <section className="main-section" aria-labelledby="events-heading">
           <div className="main-section-head">
             <h2 id="events-heading" className="main-section-title">
-              Active events
+              {isLoggedIn ? 'Recommended for you' : 'Active events'}
             </h2>
-            <p className="main-section-desc">Open registrations and upcoming sessions</p>
+            <p className="main-section-desc">
+              {isLoggedIn
+                ? 'Published events ranked by your selected strategy'
+                : 'Open registrations and upcoming sessions'}
+            </p>
+            {isLoggedIn && (
+              <div className="main-strategy-row">
+                <div
+                  className="main-strategy-selector"
+                  role="radiogroup"
+                  aria-label="Recommendation strategy"
+                >
+                  {STRATEGY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={strategy === opt.value}
+                      className={`main-strategy-option${
+                        strategy === opt.value ? ' is-active' : ''
+                      }`}
+                      onClick={() => handleStrategyChange(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {strategy === 'tag' && (
+                  <button
+                    type="button"
+                    className="main-strategy-edit-btn"
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    View / set tag preferences
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           {loadError && <p className="main-section-desc" role="alert">{loadError}</p>}
           <ul className="main-event-list">
-            {publishedEvents.map((ev) => (
+            {events.map((ev) => (
               <li key={ev.id}>
                 <article className="main-event-card">
                   <div className="main-event-card-body">
@@ -122,7 +235,7 @@ export default function MainPage() {
               </li>
             ))}
           </ul>
-          {publishedEvents.length === 0 && !loadError && (
+          {events.length === 0 && !loadError && (
             <p className="main-section-desc">No published events yet.</p>
           )}
         </section>
@@ -135,6 +248,19 @@ export default function MainPage() {
             <p className="main-section-desc">Shortcuts for networking, feedback, publishing, and attendance</p>
           </div>
           <ul className="main-action-grid">
+            <li>
+              <Link to="/my-events" className="main-action-card">
+                <span className="main-action-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                    <rect x="3" y="5" width="18" height="16" rx="2" />
+                    <path d="M16 3v4M8 3v4M3 10h18" />
+                    <path d="M8 14h2M12 14h2M16 14h2M8 17h2M12 17h2" />
+                  </svg>
+                </span>
+                <span className="main-action-label">My Events{myCreatedCount != null && myCreatedCount > 0 && ` (${myCreatedCount})`}</span>
+                <span className="main-action-hint">Events you organized</span>
+              </Link>
+            </li>
             <li>
               <Link to="/publish-event" className="main-action-card">
                 <span className="main-action-icon" aria-hidden>
@@ -169,21 +295,6 @@ export default function MainPage() {
                 </span>
                 <span className="main-action-label">Feedback</span>
                 <span className="main-action-hint">Reviews and suggestions</span>
-              </Link>
-            </li>
-
-            <li>
-              <Link to="/attendance" className="main-action-card">
-                <span className="main-action-icon" aria-hidden>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </span>
-                <span className="main-action-label">Attendance</span>
-                <span className="main-action-hint">Events you organized</span>
               </Link>
             </li>
           </ul>

@@ -18,31 +18,52 @@ interface Appointment {
   sender_name: string
   receiver_id: string
   receiver_name: string
-  timeslot: string
-  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'COMPLETED'
+  scheduled_at: string
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'
   created_at: string
 }
 
 export default function NetworkingPage() {
-  const [discoverUsers, setDiscoverUsers] = useState<UserProfile[]>([])
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  
+  const [discoverUsers, setDiscoverUsers] = useState<UserProfile[]>(() => {
+    const cached = sessionStorage.getItem('scotty_networking_discover')
+    return cached ? JSON.parse(cached) : []
+  })
+  const [appointments, setAppointments] = useState<Appointment[]>(() => {
+    const cached = sessionStorage.getItem('scotty_networking_appointments')
+    return cached ? JSON.parse(cached) : []
+  })
+
   // Profile edit state
   const [bio, setBio] = useState('')
   const [tagsInput, setTagsInput] = useState('')
-  
+
   // Selection state
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
+  const [timeDropdownOpen, setTimeDropdownOpen] = useState(false)
   const [sessionError, setSessionError] = useState(false)
-  
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [targetUser, setTargetUser] = useState<UserProfile | null>(null)
   const [busySlots, setBusySlots] = useState<Set<string>>(new Set())
-  
-  const [loading, setLoading] = useState(true)
+
+  const [loading, setLoading] = useState(!sessionStorage.getItem('scotty_networking_discover'))
   const [message, setMessage] = useState('')
+  const [alertBox, setAlertBox] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  function showAlertBox(type: 'success' | 'error', text: string) {
+    setAlertBox({ type, text })
+    setTimeout(() => setAlertBox(null), 3500)
+  }
+
+  function authHeaders(contentType = false): HeadersInit {
+    const token = StorageUtil.getToken()
+    const headers: Record<string, string> = {}
+    if (contentType) headers['Content-Type'] = 'application/json'
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    return headers
+  }
 
   useEffect(() => {
     fetchInitialData()
@@ -53,7 +74,7 @@ export default function NetworkingPage() {
     for (let hour = 9; hour <= 16; hour++) {
       const hStr = hour > 12 ? (hour - 12).toString() : hour.toString()
       const ampm = hour >= 12 ? 'PM' : 'AM'
-      
+
       slots.push(`${hStr}:00 ${ampm}`)
       if (hour < 16) {
         slots.push(`${hStr}:30 ${ampm}`)
@@ -62,18 +83,74 @@ export default function NetworkingPage() {
     return slots
   }
 
-  function getFutureDates() {
-    const dates = []
+  function getFutureDateStrings(daysAhead = 14) {
+    const dateStrings = []
+    const nowMV = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+    for (let i = 0; i < daysAhead; i++) {
+      const d = new Date(nowMV)
+      d.setDate(d.getDate() + i)
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      dateStrings.push(`${year}-${month}-${day}`)
+    }
+    return dateStrings
+  }
+
+  function getDateLabel(dateString: string) {
+    if (!dateString) return ''
+    const d = new Date(dateString)
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`
+  }
+
+  function getBusyTimesForDate(dateString: string) {
+    const dateLabel = getDateLabel(dateString)
+    const times = new Set<string>()
+    busySlots.forEach(slot => {
+      const prefix = `${dateLabel} @ `
+      if (slot.startsWith(prefix)) {
+        times.add(slot.slice(prefix.length))
+      }
+    })
+    return times
+  }
+
+  function buildScheduledAt(dateString: string, time: string): string {
+    if (!dateString || !time) return ''
+    // Keep local wall-clock time so booked and displayed times stay consistent.
+    return `${dateString}T${convertTimeTo24Hour(time)}:00`
+  }
+
+  function convertTimeTo24Hour(time: string) {
+    const [clock, period] = time.split(' ')
+    let [hour, minute] = clock.split(':').map(Number)
+    if (period === 'PM' && hour < 12) hour += 12
+    if (period === 'AM' && hour === 12) hour = 0
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+  }
+
+  function isTimePastInMV(dateString: string, timeString: string) {
+    if (!dateString) return false
     
-    for (let i = 0; i < 5; i++) {
-      const d = new Date()
-      d.setDate(d.getDate() + i)
-      const label = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`
-      dates.push(label)
-    }
-    return dates
+    // Get current Mountain View time safely
+    const nowMV = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+    
+    // Construct today's date string in MV time
+    const year = nowMV.getFullYear()
+    const month = String(nowMV.getMonth() + 1).padStart(2, '0')
+    const day = String(nowMV.getDate()).padStart(2, '0')
+    const todayStr = `${year}-${month}-${day}`
+    
+    if (dateString !== todayStr) return false
+    
+    const time24 = convertTimeTo24Hour(timeString)
+    const [hour, min] = time24.split(':').map(Number)
+    
+    if (hour < nowMV.getHours()) return true
+    if (hour === nowMV.getHours() && min <= nowMV.getMinutes()) return true
+    return false
   }
 
   async function openInviteModal(user: UserProfile) {
@@ -83,17 +160,18 @@ export default function NetworkingPage() {
     setTargetUser(user)
     setSelectedDate('')
     setSelectedTime('')
+    setTimeDropdownOpen(false)
     setIsModalOpen(true)
 
     try {
       // Fetch busy slots for both participants
       const [res1, res2] = await Promise.all([
-        fetch(`/api/networking/busy-slots/${me.id}`),
-        fetch(`/api/networking/busy-slots/${user.id}`)
+        fetch(`/api/networking/busy-slots/${me.id}`, { headers: authHeaders() }),
+        fetch(`/api/networking/busy-slots/${user.id}`, { headers: authHeaders() })
       ])
       const data1 = await res1.json()
       const data2 = await res2.json()
-      
+
       const combinedBusy = new Set<string>([
         ...(data1.busy_slots || []),
         ...(data2.busy_slots || [])
@@ -113,13 +191,19 @@ export default function NetworkingPage() {
     }
 
     try {
-      // Fetch all users for discovery
-      const res = await fetch('/api/accounts/discover')
+      // Execute fetches in parallel to reduce loading times
+      const [res, apptRes] = await Promise.all([
+        fetch('/api/accounts/discover'),
+        fetch(`/api/networking/appointments/${user.id}`, { headers: authHeaders() })
+      ])
+
       const data = await res.json()
       const allUsers: UserProfile[] = data.users || []
-      
+
       // Filter out our own profile from discovery (Liskov/SRP compliance: data filtering)
-      setDiscoverUsers(allUsers.filter(u => u.id !== user.id))
+      const filteredUsers = allUsers.filter(u => u.id !== user.id)
+      setDiscoverUsers(filteredUsers)
+      sessionStorage.setItem('scotty_networking_discover', JSON.stringify(filteredUsers))
 
       // Find ourselves in the list to populate the profile editor
       const me = allUsers.find(u => u.username === user.username)
@@ -128,11 +212,12 @@ export default function NetworkingPage() {
         setTagsInput(me.tags ? me.tags.join(', ') : '')
       }
 
-      // Fetch my appointments
-      const apptRes = await fetch(`/api/networking/appointments/${user.id}`)
+      // Handle appointments
       const apptData = await apptRes.json()
-      setAppointments(apptData.appointments || [])
-      
+      const returnedAppointments = apptData.appointments || []
+      setAppointments(returnedAppointments)
+      sessionStorage.setItem('scotty_networking_appointments', JSON.stringify(returnedAppointments))
+
       setLoading(false)
     } catch (err) {
       console.error("Failed to fetch networking data", err)
@@ -171,27 +256,37 @@ export default function NetworkingPage() {
     try {
       if (!selectedDate || !selectedTime) return
 
-      const timeslot = `${selectedDate} @ ${selectedTime}`
+      const scheduled_at = buildScheduledAt(selectedDate, selectedTime)
 
       const res = await fetch('/api/networking/invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(true),
         body: JSON.stringify({
-          sender_id: user.id,
           receiver_id: targetUser.id,
-          timeslot: timeslot
+          scheduled_at,
         })
       })
       const data = await res.json()
       if (res.ok) {
-        setMessage("Invitation sent!")
+        const successMessage = "Invitation sent!"
+        setMessage(successMessage)
+        showAlertBox('success', successMessage)
         setIsModalOpen(false)
         fetchInitialData()
       } else {
-        setMessage(data.message || "Failed to send invitation.")
+        const isInviteCapError =
+          typeof data.message === 'string' &&
+          data.message.includes('at most 3 distinct alumni per day')
+        const failureMessage = isInviteCapError
+          ? "you have exceeded you invitation cap"
+          : (data.message || "Failed to send invitation.")
+        setMessage(failureMessage)
+        showAlertBox('error', failureMessage)
       }
     } catch (err) {
-      setMessage("Error connecting to server.")
+      const errorMessage = "Error connecting to server."
+      setMessage(errorMessage)
+      showAlertBox('error', errorMessage)
     }
   }
 
@@ -202,18 +297,27 @@ export default function NetworkingPage() {
     try {
       const res = await fetch('/api/networking/respond', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(true),
         body: JSON.stringify({
           invite_id: inviteId,
-          responder_id: user.id,
           accept: accept
         })
       })
       if (res.ok) {
+        const responseMessage = accept ? "Invitation accepted." : "Invitation declined."
+        setMessage(responseMessage)
+        showAlertBox('success', responseMessage)
         fetchInitialData()
+      } else {
+        const data = await res.json()
+        const errorMessage = data.message || "Failed to respond to invitation."
+        setMessage(errorMessage)
+        showAlertBox('error', errorMessage)
       }
     } catch (err) {
-       console.error("Failed to respond", err)
+      const errorMessage = "Error connecting to server."
+      setMessage(errorMessage)
+      showAlertBox('error', errorMessage)
     }
   }
 
@@ -224,37 +328,42 @@ export default function NetworkingPage() {
     try {
       const res = await fetch('/api/networking/cancel', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(true),
         body: JSON.stringify({
-          invite_id: inviteId,
-          sender_id: user.id
+          invite_id: inviteId
         })
       })
       const data = await res.json()
       if (res.ok) {
-        setMessage("Invitation cancelled.")
+        const successMessage = "Invitation cancelled."
+        setMessage(successMessage)
+        showAlertBox('success', successMessage)
         fetchInitialData()
       } else {
-        setMessage(data.message || "Failed to cancel.")
+        const errorMessage = data.message || "Failed to cancel."
+        setMessage(errorMessage)
+        showAlertBox('error', errorMessage)
       }
     } catch (err) {
-      setMessage("Error connecting to server.")
+      const errorMessage = "Error connecting to server."
+      setMessage(errorMessage)
+      showAlertBox('error', errorMessage)
     }
   }
 
   if (sessionError) return (
     <div className="networking-page">
-       <div className="auth-error" style={{textAlign: 'center', padding: '40px'}}>
-          <h2>Session Update Required</h2>
-          <p>Your session is missing required security identifiers from the recent update.</p>
-          <button 
-            className="book-btn" 
-            style={{marginTop: '20px', width: 'auto', padding: '10px 24px'}}
-            onClick={() => { StorageUtil.removeUser(); window.location.href = '/login'; }}
-          >
-            Log Out & Log In Again
-          </button>
-       </div>
+      <div className="auth-error" style={{ textAlign: 'center', padding: '40px' }}>
+        <h2>Session Update Required</h2>
+        <p>Your session is missing required security identifiers from the recent update.</p>
+        <button
+          className="book-btn"
+          style={{ marginTop: '20px', width: 'auto', padding: '10px 24px' }}
+          onClick={() => { StorageUtil.removeUser(); window.location.href = '/login'; }}
+        >
+          Log Out & Log In Again
+        </button>
+      </div>
     </div>
   )
 
@@ -262,15 +371,37 @@ export default function NetworkingPage() {
 
   return (
     <div className="networking-page">
+      {alertBox && (
+        <div className={`networking-alertbox networking-alertbox--${alertBox.type}`} role="alert">
+          <div className="networking-alertbox-body">
+            <span className="networking-alertbox-icon">{alertBox.type === 'success' ? '✓' : '!'}</span>
+            <span>{alertBox.text}</span>
+          </div>
+          <button
+            className="networking-alertbox-close"
+            onClick={() => setAlertBox(null)}
+            aria-label="Close notification"
+          >
+            &times;
+          </button>
+        </div>
+      )}
       <header className="networking-header">
-        <div style={{ textAlign: 'left', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <Link to="/mainpage" className="tag-badge" style={{ textDecoration: 'none', padding: '8px 16px' }}>
             ← Back to Dashboard
+          </Link>
+          <Link
+            to="/my-meetings"
+            className="book-btn"
+            style={{ width: 'auto', padding: '8px 20px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            My Meetings
           </Link>
         </div>
         <h1>Networking Hub</h1>
         <p>Connect with peers and mentors across CMU-SV</p>
-        {message && <div className="auth-success" style={{marginTop: '20px'}}>{message}</div>}
+        {message && <div className="auth-success" style={{ marginTop: '20px' }}>{message}</div>}
       </header>
 
       {/* 1. Profile Setup Section */}
@@ -279,7 +410,7 @@ export default function NetworkingPage() {
         <div className="profile-form">
           <div className="profile-form-group">
             <label>Professional Bio</label>
-            <textarea 
+            <textarea
               placeholder="Tell others what you're working on..."
               value={bio}
               onChange={(e) => setBio(e.target.value)}
@@ -288,82 +419,20 @@ export default function NetworkingPage() {
           </div>
           <div className="profile-form-group">
             <label>Interest Tags (comma separated)</label>
-            <textarea 
-              placeholder="e.g. AI, Product Management, Startup" 
+            <textarea
+              placeholder="e.g. AI, Product Management, Startup"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               rows={3}
             />
-            <button 
-              className="book-btn" 
+            <button
+              className="book-btn"
               onClick={handleUpdateProfile}
-              style={{marginTop: '12px'}}
+              style={{ marginTop: '12px' }}
             >
               Update Profile
             </button>
           </div>
-        </div>
-      </section>
-
-      {/* 2. Dashboard Section */}
-      <section className="chats-section">
-        <h2>My Coffee Chats</h2>
-        <div className="chats-grid">
-          {appointments.length === 0 ? (
-            <p className="main-section-desc">No active chats yet. Start by inviting someone below!</p>
-          ) : (
-            appointments.map(appt => {
-              const user = StorageUtil.getUser()
-              const isSender = appt.sender_id === user?.id
-              const otherName = isSender ? appt.receiver_name : appt.sender_name
-              
-              return (
-                <div key={appt.id} className="chat-item">
-                  <div className="chat-info">
-                    <span className="chat-type-label">
-                      {isSender ? "📤 Outgoing to" : "📥 Incoming from"}
-                    </span>
-                    <h3 className="chat-partner-name">{otherName || "Unknown User"}</h3>
-                    <p className="chat-time">🕒 {appt.timeslot}</p>
-                  </div>
-                  
-                  <div className="chat-actions">
-                    <span className={`chat-status-badge status-${appt.status.toLowerCase()}`}>
-                      {appt.status}
-                    </span>
-                    
-                    {appt.status === 'PENDING' && (
-                      <div className="action-buttons">
-                        {isSender ? (
-                          <button 
-                            className="cancel-btn"
-                            onClick={() => handleCancelInvite(appt.id)}
-                          >
-                            Cancel
-                          </button>
-                        ) : (
-                          <>
-                            <button 
-                              className="accept-btn"
-                              onClick={() => handleRespond(appt.id, true)}
-                            >
-                              Accept
-                            </button>
-                            <button 
-                              className="decline-btn"
-                              onClick={() => handleRespond(appt.id, false)}
-                            >
-                              Decline
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })
-          )}
         </div>
       </section>
 
@@ -375,7 +444,7 @@ export default function NetworkingPage() {
             <div key={user.id} className="user-card">
               <div className="user-card-header">
                 <div className="user-avatar">
-                   {user.username.charAt(0).toUpperCase()}
+                  {user.username.charAt(0).toUpperCase()}
                 </div>
                 <div className="user-info">
                   <h3>{user.username}</h3>
@@ -388,9 +457,9 @@ export default function NetworkingPage() {
                   <span key={tag} className="tag-badge">{tag}</span>
                 ))}
               </div>
-              
+
               <div className="user-card-footer">
-                <button 
+                <button
                   className="book-btn"
                   onClick={() => openInviteModal(user)}
                 >
@@ -409,44 +478,69 @@ export default function NetworkingPage() {
               <h2>Propose Coffee Chat with {targetUser.username}</h2>
               <button className="close-modal-btn" onClick={() => setIsModalOpen(false)}>&times;</button>
             </div>
-            
+
             <div className="modal-body">
-              <div className="calendar-grid">
-                {getFutureDates().map(date => (
-                  <div key={date} className="day-section">
-                    <h4 className="day-title">{date}</h4>
-                    <div className="time-slots-grid">
-                      {generateTimeSlots().map(time => {
-                        const slotKey = `${date} @ ${time}`
-                        const isBusy = busySlots.has(slotKey)
-                        const isSelected = selectedDate === date && selectedTime === time
-                        
-                        return (
-                          <div 
-                            key={time}
-                            className={`time-slot-tile ${isBusy ? 'busy' : ''} ${isSelected ? 'selected' : ''}`}
-                            onClick={() => {
-                              if (!isBusy) {
-                                setSelectedDate(date)
-                                setSelectedTime(time)
-                              }
-                            }}
-                          >
-                            {time}
-                          </div>
-                        )
-                      })}
-                    </div>
+              <div className="date-time-picker">
+                <label htmlFor="date-select">Choose a date</label>
+                <input
+                  id="date-select"
+                  type="date"
+                  min={getFutureDateStrings(1)[0]}
+                  max={getFutureDateStrings(14)[13]}
+                  value={selectedDate}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value)
+                    setSelectedTime('')
+                    setTimeDropdownOpen(false)
+                  }}
+                />
+              </div>
+
+              <div className="date-time-picker">
+                <label>Choose a time</label>
+                <button
+                  type="button"
+                  className={`time-dropdown-button ${!selectedDate ? 'disabled' : ''}`}
+                  onClick={() => setTimeDropdownOpen(prev => !prev)}
+                  disabled={!selectedDate}
+                >
+                  {selectedTime || 'Select a time'}
+                  <span className="dropdown-arrow">▾</span>
+                </button>
+                {timeDropdownOpen && selectedDate && (
+                  <div className="time-dropdown-menu">
+                    {generateTimeSlots().map(time => {
+                      const busyTimes = getBusyTimesForDate(selectedDate)
+                      const isTimePast = isTimePastInMV(selectedDate, time)
+                      const isBusy = busyTimes.has(time) || isTimePast
+                      const selected = selectedTime === time
+                      return (
+                        <button
+                          key={time}
+                          type="button"
+                          className={`time-dropdown-item ${selected ? 'selected' : ''} ${isBusy ? 'busy' : ''}`}
+                          onClick={() => {
+                            if (!isBusy) {
+                              setSelectedTime(time)
+                              setTimeDropdownOpen(false)
+                            }
+                          }}
+                          disabled={isBusy}
+                        >
+                          {time}
+                        </button>
+                      )
+                    })}
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
             <div className="modal-footer">
               <button className="secondary-btn" onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button 
-                className="book-btn" 
-                style={{width: 'auto', padding: '10px 32px'}}
+              <button
+                className="book-btn"
+                style={{ width: 'auto', padding: '10px 32px' }}
                 disabled={!selectedDate || !selectedTime}
                 onClick={handleSendInvite}
               >
