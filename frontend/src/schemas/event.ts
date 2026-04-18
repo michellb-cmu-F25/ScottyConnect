@@ -1,6 +1,6 @@
 import { snakeToCamel } from '../services/ServiceUtils'
 
-export interface EventFromAPI {
+export interface PublicEvent {
   id: string
   title: string
   description: string
@@ -15,7 +15,7 @@ export interface EventFromAPI {
   updatedAt: string
 }
 
-export function apiEventFromSnake(raw: Record<string, unknown>): EventFromAPI {
+export function apiEventFromSnake(raw: Record<string, unknown>): PublicEvent {
   const event = snakeToCamel(raw) as Record<string, unknown>
   return {
     id: event.id as string,
@@ -26,7 +26,7 @@ export function apiEventFromSnake(raw: Record<string, unknown>): EventFromAPI {
     endTime: (event.endTime as string) ?? null,
     location: (event.location as string) ?? null,
     capacity: (event.capacity as number) ?? null,
-    status: event.status as EventFromAPI['status'],
+    status: event.status as PublicEvent['status'],
     ownerId: event.ownerId as string,
     createdAt: event.createdAt as string,
     updatedAt: (event.updatedAt as string) ?? '',

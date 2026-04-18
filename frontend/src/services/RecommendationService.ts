@@ -1,6 +1,6 @@
 import { type RecommendationStrategy } from '../common/StorageUtil'
 import { authHeaders } from './ServiceUtils'
-import { apiEventFromSnake, type EventFromAPI } from '../schemas/event'
+import { apiEventFromSnake, type PublicEvent } from '../schemas/event'
 
 interface APIRecommendationResponse {
   message: string
@@ -21,7 +21,7 @@ export async function getRecommendations(
   userId: string,
   strategy: RecommendationStrategy,
   limit: number = 20,
-): Promise<EventFromAPI[]> {
+): Promise<PublicEvent[]> {
   const url = `/api/recommendation/${encodeURIComponent(userId)}?strategy=${encodeURIComponent(strategy)}&limit=${limit}`
   const res = await fetch(url, { headers: authHeaders() })
   const data: APIRecommendationResponse = await res.json()

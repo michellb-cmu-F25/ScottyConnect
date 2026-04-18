@@ -127,3 +127,37 @@ class AttendanceDAO:
             if user:
                 users.append(user)
         return users
+
+    # Gets all registered events for a user.
+    def get_registered_events(self, user_id: str) -> list[Event]:
+        docs = self._col.find({"user_id": user_id})
+        events: list[Event] = []
+        for doc in docs:
+            event_id = doc.get("event_id")
+            if not event_id:
+                continue
+            try:
+                event_doc = self._events_col.find_one({"_id": ObjectId(event_id)})
+            except InvalidId:
+                continue
+            event = self._to_event(event_doc)
+            if event:
+                events.append(event)
+        return events
+    
+    # Gets all attended events for a user.
+    def get_attended_events(self, user_id: str) -> list[Event]:
+        docs = self._col.find({"user_id": user_id, "attendance_time": {"$ne": None}})
+        events: list[Event] = []
+        for doc in docs:
+            event_id = doc.get("event_id")
+            if not event_id:
+                continue
+            try:
+                event_doc = self._events_col.find_one({"_id": ObjectId(event_id)})
+            except InvalidId:
+                continue
+            event = self._to_event(event_doc)
+            if event:
+                events.append(event)
+        return events
