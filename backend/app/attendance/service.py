@@ -13,8 +13,11 @@ from app.attendance.schemas import (
     AttendanceRecordResponse,
     AttendEventResponse,
     RegisterEventResponse,
+    ListEventsResponse,
 )
 from app.bus.message_bus import Service
+from app.lifecycle.model.Event import Event
+from app.lifecycle.schemas import PublicEvent
 
 ATTENDANCE_SERVICE_EXTENSION_KEY = "attendance_service"
 
@@ -41,6 +44,23 @@ class AttendanceService(Service):
             tags=user.tags,
             created_at=user.created_at,
             updated_at=user.updated_at,
+        )
+
+    @staticmethod
+    def _to_public_event(event: Event) -> PublicEvent:
+        return PublicEvent(
+            id=event.id,
+            title=event.title,
+            description=event.description,
+            date=event.date,
+            start_time=event.start_time,
+            end_time=event.end_time,
+            location=event.location,
+            capacity=event.capacity,
+            owner_id=event.owner_id,
+            status=event.status,
+            created_at=event.created_at.isoformat(),
+            updated_at=event.updated_at.isoformat(),
         )
     # Registration operations
 
@@ -142,3 +162,15 @@ class AttendanceService(Service):
         if attendance.attendance_time is None:
             return AttendEventResponse(attended=False, message="User has not attended the event.", code=200)
         return AttendEventResponse(attended=True, message="User has attended the event.", code=200)
+
+    # Retrieves all registered events for a user.
+    def get_registered_events(self, user_id: str) -> ListEventsResponse:
+        """Retrieves all registered events for a user."""
+        events = self._dao.get_registered_events(user_id)
+        return ListEventsResponse(events=[self._to_public_event(event) for event in events], message="Successfully retrieved all registered events for the user.", code=200)
+    
+    # Retrieves all attended events for a user.
+    def get_attended_events(self, user_id: str) -> ListEventsResponse:
+        """Retrieves all attended events for a user."""
+        events = self._dao.get_attended_events(user_id)
+        return ListEventsResponse(events=[self._to_public_event(event) for event in events], message="Successfully retrieved all attended events for the user.", code=200)

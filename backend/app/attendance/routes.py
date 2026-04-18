@@ -8,6 +8,7 @@ from app.attendance.schemas import (
     AttendanceRecordResponse,
     RegisterEventResponse,
     AttendEventResponse,
+    ListEventsResponse,
 )
 
 from app.utils.auth import require_auth
@@ -111,4 +112,29 @@ def attend_event(event_id: str, user_id: str):
 )
 def unattend_event(event_id: str, user_id: str):
     response = get_attendance_service().unattend_event(event_id, user_id, g.user_id)
+    return jsonify(response.model_dump()), response.code
+
+
+@attendance.route("/register", methods=["GET"])
+@require_auth
+@doc(
+    response=ListEventsResponse,
+    description="Retrieve all registered events for the user",
+    tags=["attendance"],
+    success_status=200,
+)
+def get_registered_events():
+    response = get_attendance_service().get_registered_events(g.user_id)
+    return jsonify(response.model_dump()), response.code
+
+@attendance.route("/attend", methods=["GET"])
+@require_auth
+@doc(
+    response=ListEventsResponse,
+    description="Retrieve all attended events for the user",
+    tags=["attendance"],
+    success_status=200,
+)
+def get_attended_events():
+    response = get_attendance_service().get_attended_events(g.user_id)
     return jsonify(response.model_dump()), response.code

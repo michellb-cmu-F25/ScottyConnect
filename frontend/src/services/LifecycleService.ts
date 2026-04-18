@@ -1,5 +1,5 @@
 import { authHeaders } from './ServiceUtils'
-import { apiEventFromSnake, type EventFromAPI } from '../schemas/event'
+import { apiEventFromSnake, type PublicEvent } from '../schemas/event'
 import type { StoredEvent } from '../types/event'
 
 interface APIEventResponse {
@@ -14,9 +14,9 @@ interface APIEventListResponse {
   code: number
 }
 
-export type { EventFromAPI } from '../schemas/event'
+export type { PublicEvent } from '../schemas/event'
 
-export function apiEventToStored(ev: EventFromAPI): StoredEvent {
+export function apiEventToStored(ev: PublicEvent): StoredEvent {
   return {
     id: ev.id,
     title: ev.title,
@@ -43,7 +43,7 @@ export async function createEvent(
     capacity: string
   },
   status: 'draft' | 'published',
-): Promise<EventFromAPI> {
+): Promise<PublicEvent> {
   const res = await fetch('/api/lifecycle/events', {
     method: 'POST',
     headers: authHeaders(),
@@ -66,7 +66,7 @@ export async function createEvent(
   return apiEventFromSnake(data.event)
 }
 
-export async function getEvent(eventId: string): Promise<EventFromAPI> {
+export async function getEvent(eventId: string): Promise<PublicEvent> {
   const res = await fetch(`/api/lifecycle/events/${encodeURIComponent(eventId)}`)
   const data: APIEventResponse = await res.json()
   if (!res.ok || !data.event) {
@@ -75,7 +75,7 @@ export async function getEvent(eventId: string): Promise<EventFromAPI> {
   return apiEventFromSnake(data.event)
 }
 
-export async function listMyEvents(): Promise<EventFromAPI[]> {
+export async function listMyEvents(): Promise<PublicEvent[]> {
   const res = await fetch('/api/lifecycle/events/mine', {
     headers: authHeaders(),
   })
@@ -86,7 +86,7 @@ export async function listMyEvents(): Promise<EventFromAPI[]> {
   return data.events.map((e) => apiEventFromSnake(e))
 }
 
-export async function listPublishedEvents(): Promise<EventFromAPI[]> {
+export async function listPublishedEvents(): Promise<PublicEvent[]> {
   const res = await fetch('/api/lifecycle/events/published')
   const data: APIEventListResponse = await res.json()
   if (!res.ok) {
@@ -107,7 +107,7 @@ export async function updateEvent(
     capacity: string
   },
   status: 'draft' | 'published',
-): Promise<EventFromAPI> {
+): Promise<PublicEvent> {
   const res = await fetch(`/api/lifecycle/events/${encodeURIComponent(eventId)}`, {
     method: 'PUT',
     headers: authHeaders(),
@@ -143,7 +143,7 @@ export async function deleteEventApi(eventId: string): Promise<void> {
 export async function transitionEventApi(
   eventId: string,
   targetStatus: string,
-): Promise<EventFromAPI> {
+): Promise<PublicEvent> {
   const res = await fetch(`/api/lifecycle/events/${encodeURIComponent(eventId)}/transition`, {
     method: 'POST',
     headers: authHeaders(),
