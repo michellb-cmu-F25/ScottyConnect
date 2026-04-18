@@ -5,12 +5,12 @@ import RegisterPage from './pages/RegisterPage'
 import VerificationPage from './pages/VerificationPage'
 import MainPage from './pages/MainPage'
 import NetworkingPage from './pages/NetworkingPage'
-import PlaceholderPage from './pages/PlaceholderPage'
 import CreateEventPage from './pages/CreateEventPage'
 import MyEventsPage from './pages/MyEventsPage'
 import EventConfirmationPage from './pages/EventConfirmationPage'
 import EditEventPage from './pages/EditEventPage'
 import TaskBoardPage from './pages/TaskBoardPage'
+import FeedbackHistoryPage from './pages/FeedbackHistoryPage'
 import MyMeetingsPage from './pages/MyMeetingsPage'
 import EventDetailPage from './pages/EventDetailPage'
 
@@ -37,8 +37,8 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/feedback" element={
-          <ProtectedRoute>
-            <PlaceholderPage title="Feedback" />
+            <ProtectedRoute>
+            <FeedbackHistoryPage />
           </ProtectedRoute>
         } />
         <Route

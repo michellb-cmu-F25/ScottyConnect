@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import FeedbackStats from './FeedbackStatsPage'
 import {
   listMyEvents,
   apiEventToStored,
@@ -98,6 +99,10 @@ function getActions(ev: StoredEvent): { label: string; className: string; action
         { label: 'Cancel', className: 'me-action-danger', action: 'cancel' },
       ]
     case 'ended':
+      return [
+        { label: 'Tasks', className: 'me-action-secondary', action: 'tasks' },
+        { label: 'View Feedback', className: 'me-action-publish', action: 'feedback' },
+      ]
     case 'cancelled':
       return [
         { label: 'Tasks', className: 'me-action-secondary', action: 'tasks' },
@@ -113,6 +118,7 @@ export default function MyEventsPage() {
   const [, setTick] = useState(0)
   const rerender = () => setTick((t) => t + 1)
   const [deleteTarget, setDeleteTarget] = useState<StoredEvent | null>(null)
+  const [feedbackTarget, setFeedbackTarget] = useState<StoredEvent | null>(null)
   const [createdEvents, setCreatedEvents] = useState<StoredEvent[]>([])
   const [createdLoading, setCreatedLoading] = useState(true)
   const [createdError, setCreatedError] = useState('')
@@ -159,6 +165,10 @@ export default function MyEventsPage() {
     }
     if (action === 'delete') {
       setDeleteTarget(ev)
+      return
+    }
+    if (action === 'feedback') {
+      setFeedbackTarget(ev)
       return
     }
     if (action === 'end') {
@@ -352,6 +362,13 @@ export default function MyEventsPage() {
       <footer className="me-footer">
         <p>ScottyConnect · Carnegie Mellon University</p>
       </footer>
+
+      {feedbackTarget && (
+        <FeedbackStats
+          event={feedbackTarget}
+          onClose={() => setFeedbackTarget(null)}
+        />
+      )}
 
       {deleteTarget && (
         <div className="me-modal-overlay" onClick={() => setDeleteTarget(null)}>
