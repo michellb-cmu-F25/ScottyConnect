@@ -78,3 +78,18 @@ class UserTagsResponse(BaseModel):
     user_id: str
     tag_ids: list[str]
     code: int
+
+
+class EventTagsBody(BaseModel):
+    """Request body for setting an event's tags."""
+
+    tag_ids: list[str]
+
+
+class EventTagsResponse(BaseModel):
+    """Response payload for event-tag endpoints."""
+
+    message: str
+    event_id: str
+    tag_ids: list[str]
+    code: int

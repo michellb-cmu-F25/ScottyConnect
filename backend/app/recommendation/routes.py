@@ -5,6 +5,8 @@ Routes for the recommendation service.
 from flask import Blueprint, jsonify, request
 
 from app.recommendation.schemas import (
+    EventTagsBody,
+    EventTagsResponse,
     RecommendationResponse,
     TagItem,
     TagListResponse,
@@ -149,5 +151,65 @@ def set_user_tags(user_id: str):
 
     resp = UserTagsResponse(
         message="Success", user_id=user_id, tag_ids=saved, code=200
+    )
+    return jsonify(resp.model_dump(mode="json")), resp.code
+
+
+@recommendation.route("/event-tags/<event_id>", methods=["GET"])
+@doc(
+    response=EventTagsResponse,
+    description="Get the tags associated with an event.",
+    tags=["recommendation"],
+    success_status=200,
+)
+def get_event_tags(event_id: str):
+    tag_ids = get_recommendation_service().get_event_tag_ids(event_id)
+    if tag_ids is None:
+        return jsonify({"message": "Invalid event_id"}), 400
+    resp = EventTagsResponse(
+        message="Success", event_id=event_id, tag_ids=tag_ids, code=200
+    )
+    return jsonify(resp.model_dump(mode="json")), resp.code
+
+
+@recommendation.route("/event-tags/<event_id>", methods=["POST"])
+@doc(
+    request=EventTagsBody,
+    response=EventTagsResponse,
+    description="Replace an event's tag set with the supplied list.",
+    tags=["recommendation"],
+    success_status=200,
+)
+def set_event_tags(event_id: str):
+    body = request.get_json(silent=True) or {}
+    raw_tag_ids = body.get("tag_ids")
+    if not isinstance(raw_tag_ids, list):
+        return jsonify({"message": "'tag_ids' must be a list of strings"}), 400
+
+    tag_ids_in: list[str] = [str(t) for t in raw_tag_ids]
+    saved = get_recommendation_service().set_event_tags(event_id, tag_ids_in)
+    if saved is None:
+        return jsonify({"message": "Invalid event_id"}), 400
+
+    resp = EventTagsResponse(
+        message="Success", event_id=event_id, tag_ids=saved, code=200
+    )
+    return jsonify(resp.model_dump(mode="json")), resp.code
+
+
+@recommendation.route("/event-tags/<event_id>", methods=["DELETE"])
+@doc(
+    response=EventTagsResponse,
+    description="Delete all tags for an event.",
+    tags=["recommendation"],
+    success_status=200,
+)
+def delete_event_tags(event_id: str):
+    count = get_recommendation_service().delete_event_tags(event_id)
+    if count is None:
+        return jsonify({"message": "Invalid event_id"}), 400
+
+    resp = EventTagsResponse(
+        message="Success", event_id=event_id, tag_ids=[], code=200
     )
     return jsonify(resp.model_dump(mode="json")), resp.code

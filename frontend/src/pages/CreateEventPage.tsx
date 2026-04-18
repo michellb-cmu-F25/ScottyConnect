@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createEvent as createEventAPI } from '../services/LifecycleService'
+import { createEvent as createEventAPI, setEventTags } from '../services/LifecycleService'
+import EventTagSelector from '../components/EventTagSelector'
+import { DEFAULT_EVENT_TAG_IDS } from '../common/EventTagDefaults'
 import type { EventFormData, StoredEvent } from '../types/event'
 import '../styles/CreateEvent.css'
 
@@ -111,18 +113,46 @@ export function storedToForm(ev: StoredEvent): EventFormData {
 
 interface EventFormProps {
   initialData?: EventFormData
+  initialTagIds?: string[]
   pageTitle: string
   pageSubtitle: string
   backTo: string
   backLabel: string
-  onSave: (form: EventFormData, status: StoredEvent['status']) => void | Promise<void>
+  onSave: (
+    form: EventFormData,
+    status: StoredEvent['status'],
+    tagIds: string[],
+  ) => void | Promise<void>
 }
 
-export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLabel, onSave }: EventFormProps) {
+export function EventForm({
+  initialData,
+  initialTagIds,
+  pageTitle,
+  pageSubtitle,
+  backTo,
+  backLabel,
+  onSave,
+}: EventFormProps) {
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
   const [showDraftModal, setShowDraftModal] = useState(false)
   const [form, setForm] = useState<EventFormData>(initialData ?? EMPTY_FORM)
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
+    () => new Set(initialTagIds ?? DEFAULT_EVENT_TAG_IDS),
+  )
+
+  function toggleTag(tagId: string) {
+    setSelectedTagIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(tagId)) {
+        next.delete(tagId)
+      } else {
+        next.add(tagId)
+      }
+      return next
+    })
+  }
 
   const todayStr = getLocalDateString(new Date())
   const nowTimeStr = getLocalTimeString(new Date())
@@ -181,7 +211,7 @@ export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLa
     if (!isValid) return
     setSubmitting(true)
     try {
-      await onSave(form, status)
+      await onSave(form, status, Array.from(selectedTagIds))
       if (status === 'draft') {
         setShowDraftModal(true)
       }
@@ -195,7 +225,7 @@ export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLa
     if (!isValid) return
     setSubmitting(true)
     try {
-      await onSave(form, 'published')
+      await onSave(form, 'published', Array.from(selectedTagIds))
     } finally {
       setSubmitting(false)
     }
@@ -352,6 +382,16 @@ export function EventForm({ initialData, pageTitle, pageSubtitle, backTo, backLa
             </div>
           </div>
 
+          <div className="create-event-card">
+            <h2 className="create-event-card-title">Tags</h2>
+            <div className="create-event-fields">
+              <EventTagSelector
+                selectedTagIds={selectedTagIds}
+                onToggle={toggleTag}
+              />
+            </div>
+          </div>
+
           <div className="create-event-actions">
             <button
               type="submit"
@@ -421,10 +461,22 @@ export default function CreateEventPage() {
   const navigate = useNavigate()
   const [error, setError] = useState('')
 
-  async function handleSave(form: EventFormData, status: StoredEvent['status']) {
+  async function handleSave(
+    form: EventFormData,
+    status: StoredEvent['status'],
+    tagIds: string[],
+  ) {
     setError('')
     try {
       const saved = await createEventAPI(form, status as 'draft' | 'published')
+      // Save tags (best-effort — don't block event creation success if tags fail).
+      if (tagIds.length > 0) {
+        try {
+          await setEventTags(saved.id, tagIds)
+        } catch (tagErr) {
+          console.error('Failed to save event tags:', tagErr)
+        }
+      }
       if (status === 'published') {
         navigate('/event-published', { state: { eventId: saved.id } })
       }

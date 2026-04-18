@@ -5,6 +5,7 @@ import {
   apiEventToStored,
   deleteEventApi,
   transitionEventApi,
+  deleteEventTags,
 } from '../services/LifecycleService'
 import { loadEvents, type StoredEvent } from './CreateEventPage'
 import StorageUtil from '../common/StorageUtil'
@@ -192,6 +193,12 @@ export default function MyEventsPage() {
     if (!deleteTarget) return
     setActionError('')
     try {
+      // Delete event tags first (best-effort — don't block deletion if it fails)
+      try {
+        await deleteEventTags(deleteTarget.id)
+      } catch (tagErr) {
+        console.error('Failed to delete event tags:', tagErr)
+      }
       await deleteEventApi(deleteTarget.id)
       setDeleteTarget(null)
       await refreshCreated()

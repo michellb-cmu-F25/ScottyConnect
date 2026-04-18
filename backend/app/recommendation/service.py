@@ -19,6 +19,7 @@ from app.recommendation.dao.event_tag_dao import EventTagDAO
 from app.recommendation.dao.tag_dao import TagDAO
 from app.recommendation.dao.user_preference_dao import UserPreferenceDAO
 from app.recommendation.dao.user_profile_dao import UserProfileDAO
+from app.recommendation.model.EventTag import EventTag
 from app.recommendation.model.Tag import Tag
 from app.recommendation.model.UserRecommendationPreference import UserRecommendationPreference
 from app.recommendation.model.UserTag import UserTag
@@ -46,13 +47,13 @@ class RecommendationService:
         tag_dao: TagDAO | None = None,
     ) -> None:
         self._user_profile_dao = user_profile_dao or UserProfileDAO()
-        event_tag_dao = event_tag_dao or EventTagDAO()
+        self._event_tag_dao = event_tag_dao or EventTagDAO()
         attendance_signal_dao = attendance_signal_dao or AttendanceSignalDAO()
         self._event_signal_dao = event_signal_dao or EventSignalDAO()
         self._user_preference_dao = user_preference_dao or UserPreferenceDAO()
         self._tag_dao = tag_dao or TagDAO()
         self._factory = RecommendationStrategyFactory(
-            self._user_profile_dao, event_tag_dao, attendance_signal_dao
+            self._user_profile_dao, self._event_tag_dao, attendance_signal_dao
         )
 
     def get_recommendation(
@@ -143,3 +144,53 @@ class RecommendationService:
             )
 
         return self._user_profile_dao.get_user_tags(user_id)
+
+    # ---- Event Tags ----------------------------------------------------------
+
+    def get_event_tag_ids(self, event_id: str) -> list[str] | None:
+        """Return the tag_ids for an event, or None if event_id is invalid."""
+        try:
+            ObjectId(event_id)
+        except InvalidId:
+            return None
+        return self._event_tag_dao.get_event_tags(event_id)
+
+    def set_event_tags(self, event_id: str, tag_ids: list[str]) -> list[str] | None:
+        """Replace the event's tag set with the provided list.
+
+        Removes all existing tags for the event first, then inserts the new set.
+        Returns the updated list of tag_ids, or None if event_id is invalid.
+        Silently ignores tag_ids that aren't valid ObjectIds or don't exist.
+        """
+        try:
+            ObjectId(event_id)
+        except InvalidId:
+            return None
+
+        # Validate each requested tag id and dedupe.
+        valid_new: list[str] = []
+        seen: set[str] = set()
+        for tid in tag_ids:
+            try:
+                ObjectId(tid)
+            except InvalidId:
+                continue
+            if tid not in seen and self._tag_dao.find_by_id(tid) is not None:
+                valid_new.append(tid)
+                seen.add(tid)
+
+        event_tag_dao = self._event_tag_dao
+        event_tag_dao.remove_all_event_tags(event_id)
+
+        for tid in valid_new:
+            event_tag_dao.add_event_tag(EventTag(event_id=event_id, tag_id=tid))
+
+        return event_tag_dao.get_event_tags(event_id)
+
+    def delete_event_tags(self, event_id: str) -> int | None:
+        """Delete all tags for an event. Returns count deleted, or None if invalid id."""
+        try:
+            ObjectId(event_id)
+        except InvalidId:
+            return None
+        return self._event_tag_dao.remove_all_event_tags(event_id)

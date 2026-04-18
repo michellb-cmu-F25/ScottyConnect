@@ -34,15 +34,29 @@ class EventTagDAO:
 
     def add_event_tag(self, event_tag: EventTag) -> EventTag:
         """Associate a tag with an event (idempotent on event_id + tag_id)."""
-        if self._col.find_one({"event_id": event_tag.event_id, "tag_id": event_tag.tag_id}):
+        event_oid = ObjectId(event_tag.event_id)
+        tag_oid = ObjectId(event_tag.tag_id)
+        if self._col.find_one({"event_id": event_oid, "tag_id": tag_oid}):
             return event_tag
         doc = event_tag.model_dump(exclude={"id"}, exclude_none=True)
+        doc["event_id"] = event_oid
+        doc["tag_id"] = tag_oid
         result = self._col.insert_one(doc)
         return event_tag.model_copy(update={"id": str(result.inserted_id)})
 
     def remove_event_tag(self, event_id: str, tag_id: str) -> bool:
         result = self._col.delete_one({"event_id": ObjectId(event_id), "tag_id": ObjectId(tag_id)})
         return result.deleted_count > 0
+
+    def get_event_tags(self, event_id: str) -> list[str]:
+        """Return all tag_ids associated with the given event."""
+        docs = self._col.find({"event_id": ObjectId(event_id)})
+        return [str(doc["tag_id"]) for doc in docs]
+
+    def remove_all_event_tags(self, event_id: str) -> int:
+        """Remove every tag association for the given event. Returns the number deleted."""
+        result = self._col.delete_many({"event_id": ObjectId(event_id)})
+        return result.deleted_count
 
     def get_all_event_ids(self) -> list[str]:
         """
