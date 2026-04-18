@@ -13,9 +13,9 @@ import '../styles/Main.css'
 import '../styles/Settings.css'
 
 const STRATEGY_OPTIONS: { value: RecommendationStrategy; label: string }[] = [
-  { value: 'tag', label: 'Tag match' },
-  { value: 'popularity', label: 'Popular' },
-  { value: 'hybrid', label: 'For you' },
+  { value: 'tag', label: 'Tag' },
+  { value: 'popularity', label: 'Popularity' },
+  { value: 'hybrid', label: 'Hybrid' },
 ]
 
 /** Convert HH:mm (24h) to h:mm AM/PM */

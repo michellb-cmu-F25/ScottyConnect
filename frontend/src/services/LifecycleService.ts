@@ -155,3 +155,44 @@ export async function transitionEventApi(
   }
   return apiEventFromSnake(data.event)
 }
+
+// ---- Event Tags ----
+
+interface APIEventTagsResponse {
+  message: string
+  event_id: string
+  tag_ids: string[]
+  code: number
+}
+
+export async function getEventTags(eventId: string): Promise<string[]> {
+  const url = `/api/recommendation/event-tags/${encodeURIComponent(eventId)}`
+  const res = await fetch(url, { headers: authHeaders() })
+  if (!res.ok) {
+    throw new Error(`Failed to load event tags: ${res.status} ${res.statusText}`)
+  }
+  const data: APIEventTagsResponse = await res.json()
+  return data.tag_ids
+}
+
+export async function setEventTags(eventId: string, tagIds: string[]): Promise<string[]> {
+  const url = `/api/recommendation/event-tags/${encodeURIComponent(eventId)}`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ tag_ids: tagIds }),
+  })
+  if (!res.ok) {
+    throw new Error(`Failed to save event tags: ${res.status} ${res.statusText}`)
+  }
+  const data: APIEventTagsResponse = await res.json()
+  return data.tag_ids
+}
+
+export async function deleteEventTags(eventId: string): Promise<void> {
+  const url = `/api/recommendation/event-tags/${encodeURIComponent(eventId)}`
+  const res = await fetch(url, { method: 'DELETE', headers: authHeaders() })
+  if (!res.ok) {
+    throw new Error(`Failed to delete event tags: ${res.status} ${res.statusText}`)
+  }
+}
