@@ -26,6 +26,7 @@ class TaskNode(BaseModel):
     description: str  # task details
     status: str  # open / claimed / completed / closed / unavailable
     assigned_to: str | None  # user ID of the person who claimed the task
+    assigned_to_username: str | None = None  # name of the claimant
     contribution: str | None  # text submitted when the task was completed
     created_by: str  # user ID of the task creator
     progress: float  # completion percentage, computed by Composite Pattern

@@ -12,6 +12,7 @@ from app.tasks.schemas import TaskNode, TaskResponse, TaskTreeResponse
 from app.tasks.task_dao import TaskDAO
 from app.bus.message import Message, MessageType
 from app.bus.message_bus import Service
+from app.accounts.user_dao import UserDAO as UserAccountDAO
 
 TASKS_SERVICE_EXTENSION_KEY = "tasks_service"
 
@@ -34,11 +35,13 @@ class TasksService(Service):
         self,
         task_dao: TaskDAO | None = None,
         lifecycle_dao: LifecycleDAO | None = None,
+        user_dao: UserAccountDAO | None = None,
     ) -> None:
         super().__init__()
         self._dao = task_dao or TaskDAO()
         self._lifecycle_dao = lifecycle_dao or LifecycleDAO()
         self.subscribeToMessages([MessageType.LIFECYCLE_MESSAGE])
+        self._user_dao = user_dao or UserAccountDAO()
 
 
     # Message bus handler
@@ -92,8 +95,22 @@ class TasksService(Service):
 
         return None
 
-    @staticmethod
-    def _node_from_dict(d: dict) -> TaskNode:
+    def _get_username(self, user_id: str) -> str | None:
+
+        user = self._user_dao.find_by_id(user_id)
+        if user:
+            return user.username
+        else:
+            return None
+
+    def _node_from_dict(self, d: dict) -> TaskNode:
+        assigned_to = d.get("assigned_to")
+        
+        if assigned_to:
+            assigned_to_username = self._get_username(assigned_to)
+        else:
+            assigned_to_username = None
+
         return TaskNode(
             id = d.get("id"),
             event_id = d["event_id"],
@@ -101,11 +118,12 @@ class TasksService(Service):
             title = d["title"],
             description = d.get("description", ""),
             status = d["status"],
-            assigned_to = d.get("assigned_to"),
+            assigned_to = assigned_to,
+            assigned_to_username = assigned_to_username,
             contribution = d.get("contribution"),
             created_by = d["created_by"],
             progress = d.get("progress", 0),
-            children = [TasksService._node_from_dict(c) for c in d.get("children", [])],
+            children = [self._node_from_dict(c) for c in d.get("children", [])],
             created_at = str(d.get("created_at", "")),
             updated_at = str(d.get("updated_at", "")),
         )
@@ -149,10 +167,10 @@ class TasksService(Service):
         saved = self._dao.insert(task)
 
         tree = build_task_tree([saved])
-
+        
         if tree:
             node = self._node_from_dict(tree[0].to_dict())
-        else:  
+        else:
             node = None
 
         return TaskResponse(message="Task created", task=node, code=201)
@@ -224,11 +242,12 @@ class TasksService(Service):
 
         updated = self._dao.update(task_id, updates)
         tree = build_task_tree([updated])
+
         if tree:
             node = self._node_from_dict(tree[0].to_dict())
-        else:   
+        else:
             node = None
-        
+
         return TaskResponse(message="Task updated", task=node, code=200)
 
     def delete_task(
@@ -350,10 +369,41 @@ class TasksService(Service):
         )
 
         tree = build_task_tree([updated])
+        node = self._node_from_dict(tree[0].to_dict()) if tree else None
+
+        return TaskResponse(message="Contribution submitted", task=node, code=200)
+
+    def unclaim_task(
+        self,
+        task_id: str,
+        user_id: str,
+        fallback_owner_id: str | None = None,
+        fallback_status: str | None = None,
+    ) -> TaskResponse:
+        task = self._dao.find_by_id(task_id)
+
+        if task is None:
+            return TaskResponse(message="Task not found", code=404)
+
+        ctx, err = self._resolve_event(task.event_id, fallback_owner_id, fallback_status)
+
+        if err:
+            return err
+
+        is_owner = ctx.owner_id == user_id
+
+        if task.assigned_to != user_id and not is_owner:
+            return TaskResponse(message="Only the claimant or event owner can unclaim this task", code=403)
+
+        if task.status != "claimed":
+            return TaskResponse(message="Task is not claimed", code=400)
+
+        updated = self._dao.update(task_id, {"assigned_to": None, "status": "open"})
+        tree = build_task_tree([updated])
 
         if tree:
             node = self._node_from_dict(tree[0].to_dict())
         else:
             node = None
-   
-        return TaskResponse(message="Contribution submitted", task=node, code=200)
+
+        return TaskResponse(message="Task unclaimed", task=node, code=200)

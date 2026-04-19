@@ -14,6 +14,7 @@ interface TaskNode {
   description: string
   status: string
   assigned_to: string | null
+  assigned_to_username: string | null
   contribution: string | null
   created_by: string
   progress: number
@@ -210,6 +211,24 @@ export default function TaskBoardPage() {
     await loadTaskTree(event)
   }
 
+  async function handleUnclaim(taskId: string) {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/claim`, {
+        method: 'DELETE',
+        headers: mkHeaders(userId, event),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.message ?? 'Failed to unclaim task')
+        return
+      }
+    } catch {
+      setError('Network error')
+      return
+    }
+    await loadTaskTree(event)
+  }
+
   async function handleContribute(taskId: string, contribution: string) {
     try {
       const res = await fetch(`/api/tasks/${taskId}/contribute`, {
@@ -302,6 +321,7 @@ export default function TaskBoardPage() {
                 onEdit={(task) => setModal({ kind: 'edit', task })}
                 onDelete={handleDelete}
                 onClaim={handleClaim}
+                onUnclaim={handleUnclaim}
                 onContribute={(task) => setModal({ kind: 'contribute', task })}
               />
             ))}
@@ -351,12 +371,13 @@ interface TaskNodeProps {
   onEdit: (task: TaskNode) => void
   onDelete: (taskId: string) => void
   onClaim: (taskId: string) => void
+  onUnclaim: (taskId: string) => void
   onContribute: (task: TaskNode) => void
 }
 
 function TaskNodeItem({
   node, userId, isOwner, canEdit, canCreateTask, canClaim, canContribute,
-  onAddSub, onEdit, onDelete, onClaim, onContribute,
+  onAddSub, onEdit, onDelete, onClaim, onUnclaim, onContribute,
 }: TaskNodeProps) {
   const [expanded, setExpanded] = useState(true)
   const hasChildren = node.children.length > 0
@@ -390,7 +411,7 @@ function TaskNodeItem({
                   <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
-                {isMyClaim ? 'You' : node.assigned_to.slice(0, 8)}
+                {isMyClaim ? 'You' : (node.assigned_to_username ?? node.assigned_to.slice(0, 8))}
               </span>
             )}
           </p>
@@ -432,7 +453,7 @@ function TaskNodeItem({
             Delete
           </button>
         )}
-        {canClaim && isLeaf && node.status === 'open' && !isOwner && (
+        {canClaim && isLeaf && node.status === 'open' && (
           <button className="tb-btn tb-btn-claim" onClick={() => onClaim(node.id)}>
             Claim
           </button>
@@ -440,6 +461,11 @@ function TaskNodeItem({
         {canContribute && isMyClaim && node.status === 'claimed' && (
           <button className="tb-btn tb-btn-contribute" onClick={() => onContribute(node)}>
             Submit Contribution
+          </button>
+        )}
+        {canClaim && isLeaf && node.status === 'claimed' && (isMyClaim || isOwner) && (
+          <button className="tb-btn tb-btn-secondary" onClick={() => onUnclaim(node.id)}>
+            Cancel Claim
           </button>
         )}
       </div>
@@ -461,6 +487,7 @@ function TaskNodeItem({
               onEdit={onEdit}
               onDelete={onDelete}
               onClaim={onClaim}
+              onUnclaim={onUnclaim}
               onContribute={onContribute}
             />
           ))}
