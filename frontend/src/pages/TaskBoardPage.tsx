@@ -37,10 +37,11 @@ const STATUS_LABELS: Record<string, string> = {
   unavailable: 'Unavailable',
 }
 
-function mkHeaders(userId: string, ev: StoredEvent | null): HeadersInit {
+function mkHeaders(ev: StoredEvent | null): HeadersInit {
+  const token = StorageUtil.getToken() ?? ''
   const h: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-User-Id': userId,
+    'Authorization': `Bearer ${token}`,
   }
   if (ev) {
     h['X-Event-Owner-Id'] = ev.ownerId
@@ -72,7 +73,7 @@ export default function TaskBoardPage() {
     if (!eventId) return
     try {
       const res = await fetch(`/api/tasks/events/${eventId}`, {
-        headers: mkHeaders(userId, ev),
+        headers: mkHeaders(ev),
       })
       const data = await res.json()
       if (res.ok) {
@@ -132,7 +133,7 @@ export default function TaskBoardPage() {
     try {
       const res = await fetch(`/api/tasks/events/${eventId}`, {
         method: 'POST',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
         body: JSON.stringify({ title, description, parent_id: parentId }),
       })
       const data = await res.json()
@@ -153,7 +154,7 @@ export default function TaskBoardPage() {
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PUT',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
         body: JSON.stringify({ title, description }),
       })
       const data = await res.json()
@@ -177,7 +178,7 @@ export default function TaskBoardPage() {
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'DELETE',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
       })
       const data = await res.json()
       
@@ -197,7 +198,7 @@ export default function TaskBoardPage() {
     try {
       const res = await fetch(`/api/tasks/${taskId}/claim`, {
         method: 'POST',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -215,7 +216,7 @@ export default function TaskBoardPage() {
     try {
       const res = await fetch(`/api/tasks/${taskId}/claim`, {
         method: 'DELETE',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -233,7 +234,7 @@ export default function TaskBoardPage() {
     try {
       const res = await fetch(`/api/tasks/${taskId}/contribute`, {
         method: 'POST',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
         body: JSON.stringify({ contribution }),
       })
       const data = await res.json()
