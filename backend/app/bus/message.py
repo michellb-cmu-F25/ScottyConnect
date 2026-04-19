@@ -6,10 +6,22 @@ Enum class to represent the types of messages in the message bus.
 """
 class MessageType(Enum):
     # Message for user registration success, should submit request to send verification email.
+
+    # Should send verification email.
     REGISTER_MESSAGE = "REGISTER_MESSAGE"
-    
-    # TODO: Edit to use your own message types, these are just examples.
-    ATTENDANCE_MESSAGE = "ATTENDANCE_MESSAGE"
+    # Should send event registration confirmation email.
+    EVENT_REGISTRATION_CONFIRMATION = "EVENT_REGISTRATION_CONFIRMATION"
+    # Should send event registration cancelled email.
+    EVENT_REGISTRATION_CANCELLED = "EVENT_REGISTRATION_CANCELLED"
+    # Should send event reminder email.
+    EVENT_REMINDER = "EVENT_REMINDER"
+    # Should send event cancelled email.
+    EVENT_CANCELLED = "EVENT_CANCELLED"
+    # Should send event updated email.
+    EVENT_UPDATED = "EVENT_UPDATED"
+    # Should send attendance recorded email.
+    ATTENDANCE_RECORDED = "ATTENDANCE_RECORDED"
+
     FEEDBACK_MESSAGE = "FEEDBACK_MESSAGE"
     LIFECYCLE_MESSAGE = "LIFECYCLE_MESSAGE"
     # Networking related messages
