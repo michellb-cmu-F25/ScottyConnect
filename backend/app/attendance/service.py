@@ -30,6 +30,7 @@ def get_attendance_service() -> "AttendanceService":
 class AttendanceService(Service):
     def __init__(self, attendance_dao: AttendanceDAO | None = None) -> None:
         super().__init__()
+        self.key = ATTENDANCE_SERVICE_EXTENSION_KEY
         self._dao = attendance_dao or AttendanceDAO()
 
     @staticmethod

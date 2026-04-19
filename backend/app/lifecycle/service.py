@@ -29,6 +29,7 @@ def get_lifecycle_service() -> "LifecycleService":
 class LifecycleService(Service):
     def __init__(self, lifecycle_dao: LifecycleDAO | None = None) -> None:
         super().__init__()
+        self.key = LIFECYCLE_SERVICE_EXTENSION_KEY
         self._dao = lifecycle_dao or LifecycleDAO()
 
     @staticmethod

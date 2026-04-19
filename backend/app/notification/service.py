@@ -11,6 +11,7 @@ from app.notification.model.Email import Email
 # Standard Utilities
 import time
 import logging
+from threading import Lock, Thread
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,10 @@ class NotificationService(Service):
     
     def __init__(self):
         super().__init__()
+        self._worker: Thread | None = None
+        self._worker_lock = Lock()
         self._dao = EmailDAO()
+        self.key = NOTIFICATION_SERVICE_EXTENSION_KEY
         self.subscribeToMessages(SUBSCRIBED_MESSAGE_TYPES)
         
 
@@ -71,20 +75,38 @@ class NotificationService(Service):
         elif message_type == MessageType.ATTENDANCE_RECORDED:
             email = AttendanceBuilder(message).build()
         else:
-            raise ValueError(f"Invalid message type: {message_type}")
+            logger.error(f"Invalid message type: {message_type}")
+            return
         self._dao.insert(email)
 
     def poll_and_send_emails(self) -> None:
-        emails = self._dao.find_unsent_emails()
-        for email in emails:
-            self._send_email(email)
-            self._dao.update_sent_successfully(email.id)
-        
-    def _send_email(self, email: Email) -> None:
-        logger.info(f"Sending email to {email.recipient_email} for event {email.event_id}")
-    
-    def run(self) -> None:
-        # Poll and send emails every minute
         while True:
-            self.poll_and_send_emails()
+            try:
+                emails = self._dao.find_unsent_emails()
+                for email in emails:
+                    try:
+                        if self._send_email(email):
+                            self._dao.update_sent_successfully(email.id)
+                    except Exception:
+                        logger.error(
+                            "Failed to process email notification id=%s", email.id
+                        )
+            except Exception:
+                logger.error("Notification polling cycle failed")
             time.sleep(60)
+        
+    def _send_email(self, email: Email) -> bool:
+        logger.warning(f"Sending email to {email.recipient_email} for event {email.event_id}")
+        return True
+    
+    def start_worker(self) -> None:
+        with self._worker_lock:
+            if self._worker and self._worker.is_alive():
+                return
+            self._worker = Thread(
+                target=self.poll_and_send_emails,
+                name="notification-worker",
+                daemon=True,
+            )
+            self._worker.start()
+            logger.warning("Started notification worker thread")

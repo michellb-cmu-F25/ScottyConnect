@@ -20,7 +20,8 @@ class EmailDAO:
         return self._database.db[EMAILS_COLLECTION]
 
     def insert(self, email: Email) -> Email:
-        doc = email.model_dump(mode="json", exclude={"id"}, exclude_none=True)
+        # Keep datetimes as native BSON datetimes so range queries work.
+        doc = email.model_dump(mode="python", exclude={"id"}, exclude_none=True)
         result = self._col.insert_one(doc)
         return email.model_copy(update={"id": str(result.inserted_id)})
 
@@ -50,12 +51,25 @@ class EmailDAO:
         return self._to_email(email)
     
     def find_unsent_emails(self) -> list[Email]:
-        # Find all emails that have not been sent and past the send time
-        emails = self._col.find({"sent_successfully": False, "send_time": {"$lte": datetime.now(timezone.utc)}}).sort("created_at", -1)
-        return [e for doc in emails if (e := self._to_email(doc)) is not None]
+        # Backward compatible: previously, some rows stored send_time as strings.
+        # Load unsent emails first, then compare in Python after model parsing.
+        now = datetime.now(timezone.utc)
+        emails = self._col.find({"sent_successfully": False}).sort("created_at", -1)
+        ready_to_send: list[Email] = []
+        for doc in emails:
+            email = self._to_email(doc)
+            if email is None:
+                continue
+            if email.send_time is None or email.send_time <= now:
+                ready_to_send.append(email)
+        return ready_to_send
     
     def delete(self, email_id: str) -> bool:
         result = self._col.delete_one({"_id": ObjectId(email_id)})
+        return result.deleted_count > 0
+    
+    def delete_all_reminders_by_event_id(self, event_id: str) -> bool:
+        result = self._col.delete_many({"event_id": event_id, "email_type": EmailType.EVENT_REMINDER.value})
         return result.deleted_count > 0
 
     @staticmethod
