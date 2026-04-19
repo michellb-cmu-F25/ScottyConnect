@@ -119,6 +119,23 @@ def claim_task(task_id: str):
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 
+@tasks.route("/<task_id>/claim", methods=["DELETE"])
+@doc(
+    response=TaskResponse,
+    description="Unclaim a claimed task",
+    tags=["tasks"],
+    success_status=200,
+)
+def unclaim_task(task_id: str):
+    uid = _user_id()
+    if not uid:
+        return jsonify({"message": "Missing X-User-Id header"}), 401
+
+    resp = get_tasks_service().unclaim_task(task_id, uid, **_event_ctx())
+
+    return jsonify(resp.model_dump(mode="json")), resp.code
+
+
 @tasks.route("/<task_id>/contribute", methods=["POST"])
 @validate(ContributeRequest)
 @doc(
