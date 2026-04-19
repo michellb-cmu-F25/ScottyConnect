@@ -9,7 +9,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-class EmailType(Enum):
+class EmailType(str, Enum):
     VERIFICATION = "VERIFICATION"
     EVENT_REGISTRATION_CONFIRMATION = "EVENT_REGISTRATION_CONFIRMATION"
     EVENT_REGISTRATION_CANCELLED = "EVENT_REGISTRATION_CANCELLED"
@@ -30,6 +30,7 @@ class Email(BaseModel):
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
-    sent_at: datetime | None = None
+    send_time: datetime | None = None
     sent_successfully: bool = False
+    event_id: str | None = None
     

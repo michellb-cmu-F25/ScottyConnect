@@ -15,6 +15,7 @@ class EmailBuilder:
         self.subject = email_template.subject
         self.email_type = email_template.email_type
         self.body = None
+        self.event_id = message.data["event_id"] if "event_id" in message.data else None
         self.recipient_email = message.data["recipient_email"]
         self.send_time = message.data["send_time"] if "send_time" in message.data else datetime.now(timezone.utc) + timedelta(minutes=1)
 
@@ -22,12 +23,13 @@ class EmailBuilder:
         """Build the email."""
         if self.body is None:
             raise ValueError("Body is not set")
-            
+
         return Email(
             recipient_email=self.recipient_email,
             subject=self.subject,
             body=self.body,
             email_type=self.email_type,
-            sent_at=self.send_time,
+            send_time=self.send_time,
             sent_successfully=False,
+            event_id=self.event_id,
         )

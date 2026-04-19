@@ -121,20 +121,19 @@ class EmailTemplates(Enum):
 
     @staticmethod
     def message_type_to_email_template(message_type: MessageType) -> EmailTemplate:
-        match message_type:
-            case MessageType.REGISTER_MESSAGE:
-                return EmailTemplates.VERIFICATION.value
-            case MessageType.EVENT_REGISTRATION_CONFIRMATION:
-                return EmailTemplates.EVENT_REGISTRATION_CONFIRMATION.value
-            case MessageType.EVENT_REGISTRATION_CANCELLED:
-                return EmailTemplates.EVENT_REGISTRATION_CANCELLED.value
-            case MessageType.EVENT_REMINDER:
-                return EmailTemplates.EVENT_REMINDER.value
-            case MessageType.EVENT_CANCELLED:
-                return EmailTemplates.EVENT_CANCELLED.value    
-            case MessageType.EVENT_UPDATED:
-                return EmailTemplates.EVENT_UPDATED.value
-            case MessageType.ATTENDANCE_RECORDED:
-                return EmailTemplates.ATTENDANCE_RECORDED.value
-            case _:
-                raise ValueError(f"Invalid message type: {message_type}")
+        if message_type == MessageType.REGISTER_MESSAGE:
+            return EmailTemplates.VERIFICATION.value
+        elif message_type == MessageType.EVENT_REGISTRATION_CONFIRMATION:
+            return EmailTemplates.EVENT_REGISTRATION_CONFIRMATION.value
+        elif message_type == MessageType.EVENT_REGISTRATION_CANCELLED:
+            return EmailTemplates.EVENT_REGISTRATION_CANCELLED.value
+        elif message_type == MessageType.EVENT_REMINDER:
+            return EmailTemplates.EVENT_REMINDER.value
+        elif message_type == MessageType.EVENT_CANCELLED:
+            return EmailTemplates.EVENT_CANCELLED.value
+        elif message_type == MessageType.EVENT_UPDATED:
+            return EmailTemplates.EVENT_UPDATED.value
+        elif message_type == MessageType.ATTENDANCE_RECORDED:
+            return EmailTemplates.ATTENDANCE_RECORDED.value
+        else:
+            raise ValueError(f"Invalid message type: {message_type}")
