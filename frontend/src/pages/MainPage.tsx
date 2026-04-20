@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import StorageUtil, { type RecommendationStrategy } from '../common/StorageUtil'
-import { listPublishedEvents, listMyEvents, apiEventToStored } from '../services/LifecycleService'
+import {
+  listPublishedEvents,
+  listMyEvents,
+  apiEventToStored,
+  type PublicEvent,
+} from '../services/LifecycleService'
 import {
   getRecommendations,
   getUserPreference,
@@ -47,6 +52,19 @@ function formatSpots(ev: StoredEvent): string {
   if (ev.status != "published") return 'Closed'
   if (ev.registeredCount) return `${ev.registeredCount} going`
   return 'Open'
+}
+
+/**
+ * Main feed only: treat an event as past once local `date` + `endTime` has passed.
+ * If date or endTime is missing/unparseable, the event is kept (demo-safe default).
+ */
+function isMainPageEventStillActive(ev: PublicEvent): boolean {
+  const d = ev.date?.trim()
+  const t = ev.endTime?.trim()
+  if (!d || !t) return true
+  const end = new Date(`${d}T${t}`)
+  if (Number.isNaN(end.getTime())) return true
+  return end.getTime() > new Date().getTime()
 }
 
 export default function MainPage() {
@@ -106,7 +124,7 @@ export default function MainPage() {
       }
       try {
         if (isLoggedIn && userId) {
-          const list = await getRecommendations(userId, strategy, 20)
+          const list = (await getRecommendations(userId, strategy, 20)).filter(isMainPageEventStillActive)
           await Promise.all(list.map(async (ev) => {
             const users = await getRegisteredUsers(ev.id)
             ev.registeredCount = users.length
@@ -116,7 +134,7 @@ export default function MainPage() {
             setLoadError('')
           }
         } else {
-          const list = await listPublishedEvents()
+          const list = (await listPublishedEvents()).filter(isMainPageEventStillActive)
           await Promise.all(list.map(async (ev) => {
             const users = await getRegisteredUsers(ev.id)
             ev.registeredCount = users.length
