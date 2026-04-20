@@ -33,3 +33,11 @@ class EmailBuilder:
             sent_successfully=False,
             event_id=self.event_id,
         )
+    
+    def _event_json_to_string(self, event_info: dict) -> str:
+        return f"""
+        Event Name: {event_info["title"]}
+        Event Description: {event_info["description"]}
+        Event Date: {event_info["date"]} {event_info["start_time"]} - {event_info["end_time"]}
+        Event Location: {event_info["location"]}
+        """
