@@ -12,7 +12,7 @@ from app.lifecycle.schemas import (
     UpdateEventRequest,
 )
 from app.lifecycle.service import get_lifecycle_service
-from app.utils.auth import require_auth
+from app.utils.auth import require_auth, try_get_request_user_id
 from app.utils.doc import doc
 from app.utils.validate import validate
 
@@ -67,7 +67,8 @@ def list_published_events():
     success_status=200,
 )
 def get_event(event_id: str):
-    resp = get_lifecycle_service().get_event(event_id)
+    requester_id = try_get_request_user_id()
+    resp = get_lifecycle_service().get_event(event_id, requester_id=requester_id)
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 

@@ -69,7 +69,9 @@ export async function createEvent(
 }
 
 export async function getEvent(eventId: string): Promise<PublicEvent> {
-  const res = await fetch(apiUrl(`/api/lifecycle/events/${encodeURIComponent(eventId)}`))
+  const res = await fetch(apiUrl(`/api/lifecycle/events/${encodeURIComponent(eventId)}`), {
+    headers: authHeaders(),
+  })
   const data: APIEventResponse = await res.json()
   if (!res.ok || !data.event) {
     throw new Error(data.message || 'Event not found')

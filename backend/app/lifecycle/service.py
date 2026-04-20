@@ -75,10 +75,14 @@ class LifecycleService(Service):
             code=201,
         )
 
-    def get_event(self, event_id: str) -> EventResponse:
+    def get_event(self, event_id: str, requester_id: str | None = None) -> EventResponse:
         event = self._dao.find_by_id(event_id)
         if event is None:
             return EventResponse(message="Event not found", event=None, code=404)
+
+        if event.status != "published" and requester_id != event.owner_id:
+            return EventResponse(message="Event not found", event=None, code=404)
+
         return EventResponse(
             message="Success",
             event=self._to_public_event(event),
