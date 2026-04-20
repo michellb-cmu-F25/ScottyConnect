@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import '../styles/Auth.css'
 import StorageUtil from '../common/StorageUtil'
+import { apiUrl } from '../services/Config'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -24,14 +25,13 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/accounts/login', {
+      const res = await fetch(apiUrl('/api/accounts/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.trim(), password: password.trim() }),
       })
       
       const data = await res.json()
-      console.log(data)
 
       if (data.code === 403) {
         StorageUtil.setUser(data.user.username, data.user.email, data.user.id)
@@ -47,8 +47,7 @@ export default function LoginPage() {
       StorageUtil.setUser(data.user.username, data.user.email, data.user.id)
       StorageUtil.setToken(data.token)
       navigate(loginState?.from || '/mainpage')
-    } catch (error) {
-      console.log(error)
+    } catch {
       setError('Unable to connect to the server.')
     } finally {
       setLoading(false)

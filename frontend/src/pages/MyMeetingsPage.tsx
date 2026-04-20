@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
+import { apiUrl } from '../services/Config'
 import '../styles/MyMeetings.css'
 
 interface Appointment {
@@ -105,7 +106,7 @@ export default function MyMeetingsPage() {
     }
     setFetchError('')
     try {
-      const res = await fetch(`/api/networking/appointments/${user.id}`, {
+      const res = await fetch(apiUrl(`/api/networking/appointments/${user.id}`), {
         headers: authHeaders()
       })
       if (res.status === 401) {
@@ -130,7 +131,7 @@ export default function MyMeetingsPage() {
 
   async function handleRespond(inviteId: string, accept: boolean) {
     try {
-      const res = await fetch('/api/networking/respond', {
+      const res = await fetch(apiUrl('/api/networking/respond'), {
         method: 'POST',
         headers: authHeaders(true),
         body: JSON.stringify({ invite_id: inviteId, accept })
@@ -156,7 +157,7 @@ export default function MyMeetingsPage() {
 
   async function handleCancel(inviteId: string) {
     try {
-      const res = await fetch('/api/networking/cancel', {
+      const res = await fetch(apiUrl('/api/networking/cancel'), {
         method: 'POST',
         headers: authHeaders(true),
         body: JSON.stringify({ invite_id: inviteId })

@@ -1,4 +1,5 @@
 import { authHeaders } from './ServiceUtils'
+import { apiUrl } from './Config'
 import { apiEventFromSnake, type PublicEvent } from '../schemas/event'
 import type { StoredEvent } from '../types/event'
 
@@ -44,7 +45,7 @@ export async function createEvent(
   },
   status: 'draft' | 'published',
 ): Promise<PublicEvent> {
-  const res = await fetch('/api/lifecycle/events', {
+  const res = await fetch(apiUrl('/api/lifecycle/events'), {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({
@@ -67,7 +68,7 @@ export async function createEvent(
 }
 
 export async function getEvent(eventId: string): Promise<PublicEvent> {
-  const res = await fetch(`/api/lifecycle/events/${encodeURIComponent(eventId)}`)
+  const res = await fetch(apiUrl(`/api/lifecycle/events/${encodeURIComponent(eventId)}`))
   const data: APIEventResponse = await res.json()
   if (!res.ok || !data.event) {
     throw new Error(data.message || 'Event not found')
@@ -76,7 +77,7 @@ export async function getEvent(eventId: string): Promise<PublicEvent> {
 }
 
 export async function listMyEvents(): Promise<PublicEvent[]> {
-  const res = await fetch('/api/lifecycle/events/mine', {
+  const res = await fetch(apiUrl('/api/lifecycle/events/mine'), {
     headers: authHeaders(),
   })
   const data: APIEventListResponse = await res.json()
@@ -87,7 +88,7 @@ export async function listMyEvents(): Promise<PublicEvent[]> {
 }
 
 export async function listPublishedEvents(): Promise<PublicEvent[]> {
-  const res = await fetch('/api/lifecycle/events/published')
+  const res = await fetch(apiUrl('/api/lifecycle/events/published'))
   const data: APIEventListResponse = await res.json()
   if (!res.ok) {
     throw new Error(data.message || 'Failed to load events')
@@ -108,7 +109,7 @@ export async function updateEvent(
   },
   status: 'draft' | 'published',
 ): Promise<PublicEvent> {
-  const res = await fetch(`/api/lifecycle/events/${encodeURIComponent(eventId)}`, {
+  const res = await fetch(apiUrl(`/api/lifecycle/events/${encodeURIComponent(eventId)}`), {
     method: 'PUT',
     headers: authHeaders(),
     body: JSON.stringify({
@@ -130,7 +131,7 @@ export async function updateEvent(
 }
 
 export async function deleteEventApi(eventId: string): Promise<void> {
-  const res = await fetch(`/api/lifecycle/events/${encodeURIComponent(eventId)}`, {
+  const res = await fetch(apiUrl(`/api/lifecycle/events/${encodeURIComponent(eventId)}`), {
     method: 'DELETE',
     headers: authHeaders(),
   })
@@ -144,7 +145,7 @@ export async function transitionEventApi(
   eventId: string,
   targetStatus: string,
 ): Promise<PublicEvent> {
-  const res = await fetch(`/api/lifecycle/events/${encodeURIComponent(eventId)}/transition`, {
+  const res = await fetch(apiUrl(`/api/lifecycle/events/${encodeURIComponent(eventId)}/transition`), {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ target_status: targetStatus }),
@@ -166,7 +167,7 @@ interface APIEventTagsResponse {
 }
 
 export async function getEventTags(eventId: string): Promise<string[]> {
-  const url = `/api/recommendation/event-tags/${encodeURIComponent(eventId)}`
+  const url = apiUrl(`/api/recommendation/event-tags/${encodeURIComponent(eventId)}`)
   const res = await fetch(url, { headers: authHeaders() })
   if (!res.ok) {
     throw new Error(`Failed to load event tags: ${res.status} ${res.statusText}`)
@@ -176,7 +177,7 @@ export async function getEventTags(eventId: string): Promise<string[]> {
 }
 
 export async function setEventTags(eventId: string, tagIds: string[]): Promise<string[]> {
-  const url = `/api/recommendation/event-tags/${encodeURIComponent(eventId)}`
+  const url = apiUrl(`/api/recommendation/event-tags/${encodeURIComponent(eventId)}`)
   const res = await fetch(url, {
     method: 'POST',
     headers: authHeaders(),
@@ -190,7 +191,7 @@ export async function setEventTags(eventId: string, tagIds: string[]): Promise<s
 }
 
 export async function deleteEventTags(eventId: string): Promise<void> {
-  const url = `/api/recommendation/event-tags/${encodeURIComponent(eventId)}`
+  const url = apiUrl(`/api/recommendation/event-tags/${encodeURIComponent(eventId)}`)
   const res = await fetch(url, { method: 'DELETE', headers: authHeaders() })
   if (!res.ok) {
     throw new Error(`Failed to delete event tags: ${res.status} ${res.statusText}`)

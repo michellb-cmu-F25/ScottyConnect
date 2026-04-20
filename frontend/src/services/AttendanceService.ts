@@ -1,4 +1,5 @@
 import { authHeaders } from './ServiceUtils'
+import { apiUrl } from './Config'
 import { apiUserFromSnake, type PublicUser } from '../schemas/user'
 import { apiEventFromSnake, type PublicEvent } from '../schemas/event'
 
@@ -27,7 +28,7 @@ interface APIListEventsResponse {
 }
 
 export async function getRegisteredUsers(eventId: string): Promise<PublicUser[]> {
-  const res = await fetch(`/api/attendance/register/events/${encodeURIComponent(eventId)}/users`, {
+  const res = await fetch(apiUrl(`/api/attendance/register/events/${encodeURIComponent(eventId)}/users`), {
     headers: authHeaders(),
   })
   const data: APIAttendanceRecordResponse = await res.json()
@@ -38,7 +39,7 @@ export async function getRegisteredUsers(eventId: string): Promise<PublicUser[]>
 }
 
 export async function getRegistrationStatus(eventId: string): Promise<boolean> {
-  const res = await fetch(`/api/attendance/register/events/${encodeURIComponent(eventId)}`, {
+  const res = await fetch(apiUrl(`/api/attendance/register/events/${encodeURIComponent(eventId)}`), {
     headers: authHeaders(),
   })
   const data: APIRegisterEventResponse = await res.json()
@@ -49,7 +50,7 @@ export async function getRegistrationStatus(eventId: string): Promise<boolean> {
 }
 
 export async function getAttendedUsers(eventId: string): Promise<PublicUser[]> {
-  const res = await fetch(`/api/attendance/attend/events/${encodeURIComponent(eventId)}/users`, {
+  const res = await fetch(apiUrl(`/api/attendance/attend/events/${encodeURIComponent(eventId)}/users`), {
     headers: authHeaders(),
   })
   const data: APIAttendanceRecordResponse = await res.json()
@@ -60,7 +61,7 @@ export async function getAttendedUsers(eventId: string): Promise<PublicUser[]> {
 }
 
 export async function getAttendanceStatus(eventId: string): Promise<boolean> {
-  const res = await fetch(`/api/attendance/attend/events/${encodeURIComponent(eventId)}`, {
+  const res = await fetch(apiUrl(`/api/attendance/attend/events/${encodeURIComponent(eventId)}`), {
     headers: authHeaders(),
   })
   const data: APIAttendEventResponse = await res.json()
@@ -71,7 +72,7 @@ export async function getAttendanceStatus(eventId: string): Promise<boolean> {
 }
 
 export async function registerEvent(eventId: string): Promise<boolean> {
-  const res = await fetch(`/api/attendance/register/events/${encodeURIComponent(eventId)}`, {
+  const res = await fetch(apiUrl(`/api/attendance/register/events/${encodeURIComponent(eventId)}`), {
     method: 'POST',
     headers: authHeaders(),
   })
@@ -83,7 +84,7 @@ export async function registerEvent(eventId: string): Promise<boolean> {
 }
 
 export async function unregisterEvent(eventId: string): Promise<boolean> {
-  const res = await fetch(`/api/attendance/register/events/${encodeURIComponent(eventId)}`, {
+  const res = await fetch(apiUrl(`/api/attendance/register/events/${encodeURIComponent(eventId)}`), {
     method: 'DELETE',
     headers: authHeaders(),
   })
@@ -96,7 +97,7 @@ export async function unregisterEvent(eventId: string): Promise<boolean> {
 
 export async function attendEvent(eventId: string, userId: string): Promise<boolean> {
   const res = await fetch(
-    `/api/attendance/attend/events/${encodeURIComponent(eventId)}/users/${encodeURIComponent(userId)}`,
+    apiUrl(`/api/attendance/attend/events/${encodeURIComponent(eventId)}/users/${encodeURIComponent(userId)}`),
     {
       method: 'POST',
       headers: authHeaders(),
@@ -111,7 +112,7 @@ export async function attendEvent(eventId: string, userId: string): Promise<bool
 
 export async function unattendEvent(eventId: string, userId: string): Promise<boolean> {
   const res = await fetch(
-    `/api/attendance/attend/events/${encodeURIComponent(eventId)}/users/${encodeURIComponent(userId)}`,
+    apiUrl(`/api/attendance/attend/events/${encodeURIComponent(eventId)}/users/${encodeURIComponent(userId)}`),
     {
       method: 'DELETE',
       headers: authHeaders(),
@@ -125,7 +126,7 @@ export async function unattendEvent(eventId: string, userId: string): Promise<bo
 }
 
 export async function getRegisteredEvents(): Promise<PublicEvent[]> {
-  const res = await fetch(`/api/attendance/register`, {
+  const res = await fetch(apiUrl('/api/attendance/register'), {
     headers: authHeaders(),
   })
   const data: APIListEventsResponse = await res.json()
@@ -136,7 +137,7 @@ export async function getRegisteredEvents(): Promise<PublicEvent[]> {
 }
 
 export async function getAttendedEvents(): Promise<PublicEvent[]> {
-  const res = await fetch(`/api/attendance/attend`, {
+  const res = await fetch(apiUrl('/api/attendance/attend'), {
     headers: authHeaders(),
   })
   const data: APIListEventsResponse = await res.json()
