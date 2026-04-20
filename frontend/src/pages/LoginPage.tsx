@@ -31,6 +31,7 @@ export default function LoginPage() {
       })
       
       const data = await res.json()
+      console.log(data)
 
       if (data.code === 403) {
         StorageUtil.setUser(data.user.username, data.user.email, data.user.id)
@@ -46,7 +47,8 @@ export default function LoginPage() {
       StorageUtil.setUser(data.user.username, data.user.email, data.user.id)
       StorageUtil.setToken(data.token)
       navigate(loginState?.from || '/mainpage')
-    } catch {
+    } catch (error) {
+      console.log(error)
       setError('Unable to connect to the server.')
     } finally {
       setLoading(false)
