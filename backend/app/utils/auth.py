@@ -22,6 +22,20 @@ def _get_jwt() -> JWT:
     return _jwt
 
 
+def try_get_request_user_id() -> str | None:
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Bearer "):
+        return None
+
+    token = header[len("Bearer ") :]
+    try:
+        payload = _get_jwt().verify_token(token)
+    except Exception:
+        return None
+
+    return payload.get("user_id")
+
+
 def require_auth(view):
     @wraps(view)
     def wrapped(*args, **kwargs):

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import StorageUtil from '../common/StorageUtil'
+import { apiUrl } from '../services/Config'
 import { getEvent, apiEventToStored } from '../services/LifecycleService'
 import {
   getRegistrationStatus,
@@ -68,6 +70,7 @@ export default function EventDetailPage() {
   const [registrationError, setRegistrationError] = useState('')
   const [registrationSaving, setRegistrationSaving] = useState(false)
   const [registerSuccessMessage, setRegisterSuccessMessage] = useState('')
+  const [hostLabel, setHostLabel] = useState('')
 
   // Load event details on mount
   useEffect(() => {
@@ -124,7 +127,53 @@ export default function EventDetailPage() {
     }
   }, [id])
 
-  
+  // Resolve host display name (username when available via discover cache or API)
+  useEffect(() => {
+    if (!event) {
+      setHostLabel('')
+      return
+    }
+
+    const me = StorageUtil.getUser()
+    if (me?.id === event.ownerId) {
+      setHostLabel(me.username ? me.username : 'You')
+      return
+    }
+
+    setHostLabel('')
+    let cancelled = false
+    ;(async () => {
+      try {
+        const raw = sessionStorage.getItem('scotty_networking_discover')
+        if (raw) {
+          const users = JSON.parse(raw) as { id?: string; username?: string }[]
+          const hit = users.find((u) => u.id === event.ownerId)
+          if (hit?.username) {
+            if (!cancelled) setHostLabel(hit.username)
+            return
+          }
+        }
+      } catch {
+        /* ignore cache parse errors */
+      }
+
+      try {
+        const res = await fetch(apiUrl('/api/accounts/discover'))
+        const data = (await res.json()) as { users?: { id: string; username: string }[] }
+        const hit = data.users?.find((u) => u.id === event.ownerId)
+        if (!cancelled) {
+          setHostLabel(hit?.username ? hit.username : 'Organizer')
+        }
+      } catch {
+        if (!cancelled) setHostLabel('Organizer')
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [event])
+
   // Handles the registration click event
   async function handleRegistrationClick() {
     if (!id || registrationSaving) return
@@ -197,8 +246,6 @@ export default function EventDetailPage() {
               </span>
             </div>
 
-            
-
             <div className="event-detail-actions">
               <button
                 type="button"
@@ -216,6 +263,10 @@ export default function EventDetailPage() {
             <p className="event-detail-description">{event.description}</p>
 
             <dl className="event-detail-grid">
+              <div className="event-detail-item">
+                <dt>Hosted by</dt>
+                <dd>{hostLabel || '—'}</dd>
+              </div>
               <div className="event-detail-item">
                 <dt>Date and time</dt>
                 <dd>{formatDateTime(event)}</dd>

@@ -57,7 +57,11 @@ export default function FeedbackHistoryPage() {
       // Step 2: fetch all unique events in parallel
       const uniqueEventIds = [...new Set(items.map(f => f.event_id))]
       const eventResponses = await Promise.all(
-        uniqueEventIds.map(id => fetch(apiUrl(`/api/lifecycle/events/${id}`)))
+        uniqueEventIds.map(id =>
+          fetch(apiUrl(`/api/lifecycle/events/${id}`), {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          })
+        )
       )
 
       // Build eventId -> EventInfo lookup
