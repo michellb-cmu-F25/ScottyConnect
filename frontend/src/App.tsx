@@ -18,31 +18,31 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/verify" element={<VerificationPage />} />
-        <Route path="/mainpage" element={
+        <Route path="/pages/login" element={<LoginPage />} />
+        <Route path="/pages/register" element={<RegisterPage />} />
+        <Route path="/pages/verify" element={<VerificationPage />} />
+        <Route path="/pages/mainpage" element={
           <ProtectedRoute>
             <MainPage />
           </ProtectedRoute>
         } />
-        <Route path="/networking" element={
+        <Route path="/pages/networking" element={
           <ProtectedRoute>
             <NetworkingPage />
           </ProtectedRoute>
         } />
-        <Route path="/my-meetings" element={
+        <Route path="/pages/my-meetings" element={
           <ProtectedRoute>
             <MyMeetingsPage />
           </ProtectedRoute>
         } />
-        <Route path="/feedback" element={
+        <Route path="/pages/feedback" element={
             <ProtectedRoute>
             <FeedbackHistoryPage />
           </ProtectedRoute>
         } />
         <Route
-          path="/publish-event"
+          path="/pages/publish-event"
           element={
             <ProtectedRoute>
               <CreateEventPage />
@@ -50,7 +50,7 @@ function App() {
           }
         />
         <Route
-          path="/my-events"
+          path="/pages/my-events"
           element={
             <ProtectedRoute>
               <MyEventsPage />
@@ -58,7 +58,7 @@ function App() {
           }
         />
         <Route
-          path="/events/:id"
+          path="/pages/events/:id"
           element={
             <ProtectedRoute>
               <EventDetailPage />
@@ -66,24 +66,24 @@ function App() {
           }
         />
         <Route
-          path="/events/:id/edit"
+          path="/pages/events/:id/edit"
           element={
             <ProtectedRoute>
               <EditEventPage />
             </ProtectedRoute>
           }
         />
-        <Route path="/events/:eventId/tasks" element={
+        <Route path="/pages/events/:eventId/tasks" element={
           <ProtectedRoute>
             <TaskBoardPage />
           </ProtectedRoute>
         } />
-        <Route path="/event-published" element={
+        <Route path="/pages/event-published" element={
           <ProtectedRoute>
             <EventConfirmationPage />
           </ProtectedRoute>
         } />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/pages/login" replace />} />
       </Routes>
     </BrowserRouter>
   )
