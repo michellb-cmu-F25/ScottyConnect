@@ -7,6 +7,7 @@ Handles notification operations using NotificationDAO for persistence.
 # Email Domain Utilities
 from app.notification.notification_dao import EmailDAO
 from app.notification.model.Email import Email
+from app.notification.gmail_sender import GmailSender
 
 # Standard Utilities
 import logging
@@ -162,7 +163,8 @@ class NotificationService(Service):
         
     def _send_email(self, email: Email) -> bool:
         logger.info(f"Sending email to {email.recipient_email} for event {email.event_id}")
-        return True
+        return GmailSender().send_email(email.recipient_email, email.subject, email.body)
+        
     
     def start_worker(self) -> None:
         with self._worker_lock:
