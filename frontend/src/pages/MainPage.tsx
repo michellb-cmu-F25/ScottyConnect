@@ -44,7 +44,8 @@ function formatEventDate(ev: StoredEvent): string {
 }
 
 function formatSpots(ev: StoredEvent): string {
-  if (ev.capacity) return `${ev.registeredCount} / ${ev.capacity}`
+  if (ev.status != "published") return 'Closed'
+  if (ev.registeredCount) return `${ev.registeredCount} going`
   return 'Open'
 }
 
