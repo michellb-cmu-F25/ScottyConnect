@@ -8,6 +8,7 @@ export interface StoredEvent {
   endTime: string
   location: string
   capacity: number | null
+  registeredCount: number | null
   status: 'draft' | 'published' | 'ended' | 'cancelled'
   ownerId: string
   createdAt: string

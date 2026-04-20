@@ -27,6 +27,7 @@ export function apiEventToStored(ev: PublicEvent): StoredEvent {
     endTime: ev.endTime ?? '',
     location: ev.location ?? '',
     capacity: ev.capacity,
+    registeredCount: ev.registeredCount ?? 0,
     status: ev.status,
     ownerId: ev.ownerId,
     createdAt: ev.createdAt,
