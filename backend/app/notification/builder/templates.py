@@ -60,7 +60,7 @@ class EmailTemplates(Enum):
     EVENT_REMINDER = EmailTemplate(
         """
         ScottyConnect Event Reminder
-        This is a reminder for your upcoming event that is scheduled for {event_date} at {event_time}:
+        This is a reminder for your upcoming event that is scheduled in 1 hour:
         
         {event_info}
 

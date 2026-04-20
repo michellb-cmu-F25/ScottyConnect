@@ -161,3 +161,11 @@ class AttendanceDAO:
             if event:
                 events.append(event)
         return events
+    
+    def find_user_by_id(self, user_id: str) -> User | None:
+        doc = self._users_col.find_one({"_id": ObjectId(user_id)})
+        return self._to_user(doc)
+    
+    def find_user_by_email(self, email: str) -> User | None:
+        doc = self._users_col.find_one({"email": email})
+        return self._to_user(doc)

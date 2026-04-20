@@ -16,8 +16,6 @@ class EventReminderBuilder(EmailBuilder):
         
     def fill_template(self):
         self.body = self.template.format(
-            event_date=self.message.data["event_date"],
-            event_time=self.message.data["event_time"],
             event_info=self.message.data["event_info"]
         )
         

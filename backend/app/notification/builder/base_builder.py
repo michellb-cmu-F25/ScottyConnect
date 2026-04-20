@@ -17,7 +17,7 @@ class EmailBuilder:
         self.body = None
         self.event_id = message.data["event_id"] if "event_id" in message.data else None
         self.recipient_email = message.data["recipient_email"]
-        self.send_time = message.data["send_time"] if "send_time" in message.data else datetime.now(timezone.utc) + timedelta(minutes=1)
+        self.send_time = message.data["send_time"] if "send_time" in message.data else datetime.now(timezone.utc)
 
     def build(self) -> Email:
         """Build the email."""

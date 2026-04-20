@@ -49,10 +49,6 @@ def create_app():
     app.extensions[NETWORKING_SERVICE_EXTENSION_KEY] = NetworkingService()
     app.extensions[TASKS_SERVICE_EXTENSION_KEY] = TasksService()
 
-    # This prevents the worker from starting multiple times during local development
-    reloader_state = os.environ.get("WERKZEUG_RUN_MAIN")
-    if reloader_state is None or reloader_state == "true":
-        app.extensions[NOTIFICATION_SERVICE_EXTENSION_KEY].start_worker()
 
     from .routes import main
 

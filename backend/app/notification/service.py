@@ -9,8 +9,9 @@ from app.notification.notification_dao import EmailDAO
 from app.notification.model.Email import Email
 
 # Standard Utilities
-import time
 import logging
+import time
+from datetime import datetime, timedelta, timezone
 from threading import Lock, Thread
 
 logger = logging.getLogger(__name__)
@@ -50,38 +51,101 @@ class NotificationService(Service):
         self._dao = EmailDAO()
         self.key = NOTIFICATION_SERVICE_EXTENSION_KEY
         self.subscribeToMessages(SUBSCRIBED_MESSAGE_TYPES)
-        
+
+    @staticmethod
+    def _get_event_datetime(event_info: dict) -> datetime | None:
+        event_date = event_info.get("date")
+        start_time = event_info.get("start_time")
+        if not isinstance(event_date, str) or not isinstance(start_time, str):
+            return None
+        try:
+            event_time = datetime.strptime(
+                f"{event_date} {start_time[:5]}", "%Y-%m-%d %H:%M"
+            )
+        except ValueError:
+            return None
+        # Treat schedule timestamps as UTC for consistent comparisons.
+        return event_time.replace(tzinfo=timezone.utc)
 
     def processMessage(self, message: Message) -> None:
         message_type = message.get_type()
+        emails = []
         if message_type == MessageType.REGISTER_MESSAGE:
-            email = VerificationBuilder(message).build()
+            emails.append(VerificationBuilder(message).build())
         elif message_type == MessageType.EVENT_REGISTRATION_CONFIRMATION:
             email = EventRegisterBuilder(message).build()
             prev_email = self._dao.find_confirmation_email(email.recipient_email, email.event_id)
             if prev_email:
                 self._dao.delete(prev_email.id)
+                # Remove reminder for the recipient
+                self._dao.delete_reminder(email.event_id, email.recipient_email)
+            # Add new reminder for the recipient
+            event_info = message.data["event_info"]
+            event_time = self._get_event_datetime(event_info)
+            if event_time is None:
+                logger.error("Invalid event_info for reminder scheduling: %s", event_info)
+            else:
+                send_time = event_time - timedelta(hours=1)
+                try:
+                    self.publishMessage(Message(MessageType.EVENT_REMINDER, {
+                        "event_id": event_info["id"],
+                        "event_info": event_info,
+                        "recipient_email": email.recipient_email,
+                        "send_time": send_time.isoformat(),
+                    }))
+                except Exception as e:
+                    logger.error("Failed to publish EVENT_REMINDER message: %s", e)
+            emails.append(email)
         elif message_type == MessageType.EVENT_REGISTRATION_CANCELLED:
             email = EventUnregisterBuilder(message).build()
+            # Delete previous confirmation email if it exists.
             prev_email = self._dao.find_confirmation_email(email.recipient_email, email.event_id)
             if prev_email:
                 self._dao.delete(prev_email.id)
+            # Remove reminder for the recipient
+            self._dao.delete_reminder(email.event_id, email.recipient_email)
+            emails.append(email)
         elif message_type == MessageType.EVENT_REMINDER:
-            email = EventReminderBuilder(message).build()
+            emails.append(EventReminderBuilder(message).build())
         elif message_type == MessageType.EVENT_CANCELLED:
-            email = EventCancelBuilder(message).build()
+            data = dict(message.get_data())
+
+            # Send email to the recipient.
+            if "recipient_email" in data:
+                emails.append(EventCancelBuilder(message).build())
+            else:
+                event_id = data.get("event_id")
+                if not isinstance(event_id, str):
+                    logger.error("EVENT_CANCELLED missing event_id for recipient fan-out")
+                    return
+                recipients = self._dao.find_registered_user_emails(event_id)
+                for recipient_email in recipients:
+                    fanout_message = Message(
+                        MessageType.EVENT_CANCELLED,
+                        {**data, "recipient_email": recipient_email},
+                    )
+                    emails.append(EventCancelBuilder(fanout_message).build())
+            # Delete all reminders for the event.
+            if data.get("event_id"):
+                self._dao.delete_all_reminders_by_event_id(data.get("event_id"))
+            else:
+                logger.error("EVENT_CANCELLED missing event_id for reminder deletion")
         elif message_type == MessageType.EVENT_UPDATED:
-            email = EventUpdateBuilder(message).build()
+            # Not used for now - published events cannot be changed atm.
+            emails.append(EventUpdateBuilder(message).build())
         elif message_type == MessageType.ATTENDANCE_RECORDED:
-            email = AttendanceBuilder(message).build()
+            emails.append(AttendanceBuilder(message).build())
         else:
             logger.error(f"Invalid message type: {message_type}")
             return
-        self._dao.insert(email)
+        for email in emails:
+            self._dao.insert(email)
 
     def poll_and_send_emails(self) -> None:
+        cnt = 1
         while True:
             try:
+                logger.info("Polling for unsent emails -- cycle %d", cnt)
                 emails = self._dao.find_unsent_emails()
                 for email in emails:
                     try:
@@ -91,12 +155,13 @@ class NotificationService(Service):
                         logger.error(
                             "Failed to process email notification id=%s", email.id
                         )
-            except Exception:
-                logger.error("Notification polling cycle failed")
+            except Exception as e:
+                logger.error("Notification polling cycle failed: %s", e)
+            cnt += 1
             time.sleep(60)
         
     def _send_email(self, email: Email) -> bool:
-        logger.warning(f"Sending email to {email.recipient_email} for event {email.event_id}")
+        logger.info(f"Sending email to {email.recipient_email} for event {email.event_id}")
         return True
     
     def start_worker(self) -> None:
@@ -109,4 +174,4 @@ class NotificationService(Service):
                 daemon=True,
             )
             self._worker.start()
-            logger.warning("Started notification worker thread")
+            logger.info("Started notification worker thread")
