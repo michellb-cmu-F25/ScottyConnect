@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
+import { apiUrl } from '../services/Config'
 import '../styles/FeedbackHistory.css'
 
 interface FeedbackItem {
@@ -35,7 +36,7 @@ export default function FeedbackHistoryPage() {
 
     try {
       // Step 1: fetch the user's feedback history
-      const feedbackRes = await fetch('/api/feedback/me', {
+      const feedbackRes = await fetch(apiUrl('/api/feedback/me'), {
         headers: { Authorization: `Bearer ${token}` },
       })
       const feedbackData = await feedbackRes.json()
@@ -56,7 +57,7 @@ export default function FeedbackHistoryPage() {
       // Step 2: fetch all unique events in parallel
       const uniqueEventIds = [...new Set(items.map(f => f.event_id))]
       const eventResponses = await Promise.all(
-        uniqueEventIds.map(id => fetch(`/api/lifecycle/events/${id}`))
+        uniqueEventIds.map(id => fetch(apiUrl(`/api/lifecycle/events/${id}`)))
       )
 
       // Build eventId -> EventInfo lookup

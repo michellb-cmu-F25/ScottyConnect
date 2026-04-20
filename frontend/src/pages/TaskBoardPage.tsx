@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
 import { getEvent, apiEventToStored } from '../services/LifecycleService'
+import { apiUrl } from '../services/Config'
 import { loadEvents } from './CreateEventPage'
 import type { StoredEvent } from '../types/event'
 import '../styles/TaskBoard.css'
@@ -72,7 +73,7 @@ export default function TaskBoardPage() {
   const loadTaskTree = useCallback(async (ev: StoredEvent | null) => {
     if (!eventId) return
     try {
-      const res = await fetch(`/api/tasks/events/${eventId}`, {
+      const res = await fetch(apiUrl(`/api/tasks/events/${eventId}`), {
         headers: mkHeaders(ev),
       })
       const data = await res.json()
@@ -131,7 +132,7 @@ export default function TaskBoardPage() {
     if (!eventId) return
 
     try {
-      const res = await fetch(`/api/tasks/events/${eventId}`, {
+      const res = await fetch(apiUrl(`/api/tasks/events/${eventId}`), {
         method: 'POST',
         headers: mkHeaders(event),
         body: JSON.stringify({ title, description, parent_id: parentId }),
@@ -152,7 +153,7 @@ export default function TaskBoardPage() {
 
   async function handleUpdate(taskId: string, title: string, description: string) {
     try {
-      const res = await fetch(`/api/tasks/${taskId}`, {
+      const res = await fetch(apiUrl(`/api/tasks/${taskId}`), {
         method: 'PUT',
         headers: mkHeaders(event),
         body: JSON.stringify({ title, description }),
@@ -176,7 +177,7 @@ export default function TaskBoardPage() {
     if (!confirm('Delete this task and all its sub-tasks?')) return
 
     try {
-      const res = await fetch(`/api/tasks/${taskId}`, {
+      const res = await fetch(apiUrl(`/api/tasks/${taskId}`), {
         method: 'DELETE',
         headers: mkHeaders(event),
       })
@@ -196,7 +197,7 @@ export default function TaskBoardPage() {
 
   async function handleClaim(taskId: string) {
     try {
-      const res = await fetch(`/api/tasks/${taskId}/claim`, {
+      const res = await fetch(apiUrl(`/api/tasks/${taskId}/claim`), {
         method: 'POST',
         headers: mkHeaders(event),
       })
@@ -214,7 +215,7 @@ export default function TaskBoardPage() {
 
   async function handleUnclaim(taskId: string) {
     try {
-      const res = await fetch(`/api/tasks/${taskId}/claim`, {
+      const res = await fetch(apiUrl(`/api/tasks/${taskId}/claim`), {
         method: 'DELETE',
         headers: mkHeaders(event),
       })
@@ -232,7 +233,7 @@ export default function TaskBoardPage() {
 
   async function handleContribute(taskId: string, contribution: string) {
     try {
-      const res = await fetch(`/api/tasks/${taskId}/contribute`, {
+      const res = await fetch(apiUrl(`/api/tasks/${taskId}/contribute`), {
         method: 'POST',
         headers: mkHeaders(event),
         body: JSON.stringify({ contribution }),

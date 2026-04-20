@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import StorageUtil from '../common/StorageUtil'
+import { apiUrl } from '../services/Config'
 import type { StoredEvent } from './CreateEventPage'
 import '../styles/FeedbackStats.css'
 
@@ -36,10 +37,10 @@ function FeedbackStats({ event, onClose }: FeedbackStatsProps) {
     }
     try {
       const [feedbackRes, usersRes] = await Promise.all([
-        fetch(`/api/feedback/events/${event.id}`, {
+        fetch(apiUrl(`/api/feedback/events/${event.id}`), {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('/api/accounts/discover'),
+        fetch(apiUrl('/api/accounts/discover')),
       ])
       const feedbackData = await feedbackRes.json()
       const usersData = await usersRes.json()

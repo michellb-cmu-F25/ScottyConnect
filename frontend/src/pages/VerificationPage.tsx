@@ -2,6 +2,7 @@ import { useRef, useState, type ClipboardEvent, type SubmitEvent, type KeyboardE
 import { Link, useNavigate } from 'react-router-dom'
 import '../styles/Auth.css'
 import StorageUtil from '../common/StorageUtil'
+import { apiUrl } from '../services/Config'
 
 // Verification code length
 const CODE_LEN = 6
@@ -95,7 +96,7 @@ export default function VerificationPage() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/accounts/verify', {
+      const res = await fetch(apiUrl('/api/accounts/verify'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: verifyEmail, code }),

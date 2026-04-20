@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
+import { apiUrl } from '../services/Config'
 import '../styles/Networking.css'
 
 interface UserProfile {
@@ -166,8 +167,8 @@ export default function NetworkingPage() {
     try {
       // Fetch busy slots for both participants
       const [res1, res2] = await Promise.all([
-        fetch(`/api/networking/busy-slots/${me.id}`, { headers: authHeaders() }),
-        fetch(`/api/networking/busy-slots/${user.id}`, { headers: authHeaders() })
+        fetch(apiUrl(`/api/networking/busy-slots/${me.id}`), { headers: authHeaders() }),
+        fetch(apiUrl(`/api/networking/busy-slots/${user.id}`), { headers: authHeaders() })
       ])
       const data1 = await res1.json()
       const data2 = await res2.json()
@@ -193,8 +194,8 @@ export default function NetworkingPage() {
     try {
       // Execute fetches in parallel to reduce loading times
       const [res, apptRes] = await Promise.all([
-        fetch('/api/accounts/discover'),
-        fetch(`/api/networking/appointments/${user.id}`, { headers: authHeaders() })
+        fetch(apiUrl('/api/accounts/discover')),
+        fetch(apiUrl(`/api/networking/appointments/${user.id}`), { headers: authHeaders() })
       ])
 
       const data = await res.json()
@@ -230,7 +231,7 @@ export default function NetworkingPage() {
     if (!user || !user.id) return
 
     try {
-      const res = await fetch('/api/accounts/profile', {
+      const res = await fetch(apiUrl('/api/accounts/profile'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -258,7 +259,7 @@ export default function NetworkingPage() {
 
       const scheduled_at = buildScheduledAt(selectedDate, selectedTime)
 
-      const res = await fetch('/api/networking/invite', {
+      const res = await fetch(apiUrl('/api/networking/invite'), {
         method: 'POST',
         headers: authHeaders(true),
         body: JSON.stringify({
@@ -295,7 +296,7 @@ export default function NetworkingPage() {
     if (!user) return
 
     try {
-      const res = await fetch('/api/networking/respond', {
+      const res = await fetch(apiUrl('/api/networking/respond'), {
         method: 'POST',
         headers: authHeaders(true),
         body: JSON.stringify({
@@ -326,7 +327,7 @@ export default function NetworkingPage() {
     if (!user || !user.id) return
 
     try {
-      const res = await fetch('/api/networking/cancel', {
+      const res = await fetch(apiUrl('/api/networking/cancel'), {
         method: 'POST',
         headers: authHeaders(true),
         body: JSON.stringify({
