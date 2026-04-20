@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from app.bus.message import Message, MessageType
 
+import logging
+logger = logging.getLogger(__name__)
 
 class Service:
     """
@@ -21,7 +23,8 @@ class Service:
     """
 
     def publishMessage(self, message: Message) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+        logger.info(f"{self.key} - Publishing message: {message}")
+        MessageBus.publish(message)
 
     """
     Subclasses should implement this method to process messages from the message bus

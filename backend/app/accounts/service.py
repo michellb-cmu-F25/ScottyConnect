@@ -20,7 +20,7 @@ from app.accounts.schemas import (
 )
 from app.accounts.user_dao import UserDAO
 from app.utils.jwt import JWT
-from app.bus.message_bus import Service, MessageBus
+from app.bus.message_bus import Service
 from app.bus.message import Message, MessageType
 from app.utils.verification import generate_verification_code
 
@@ -41,6 +41,7 @@ Account Service extends the Service base class from the message bus, utilize the
 class AccountService(Service):
     def __init__(self, user_dao: UserDAO | None = None) -> None:
         super().__init__()
+        self.key = ACCOUNT_SERVICE_EXTENSION_KEY
         self._users = user_dao or UserDAO()
         secret = os.getenv("JWT_SECRET")
         if not secret:
@@ -83,7 +84,13 @@ class AccountService(Service):
             return RegisterResponse(message=str(e), user=None, code=400)
         
         # Publish message
-        MessageBus.publish(Message(MessageType.REGISTER_MESSAGE, saved.model_dump()))
+        self.publishMessage(Message(MessageType.REGISTER_MESSAGE, 
+            {
+                "username": saved.username,
+                "recipient_email": saved.email,
+                "verification_code": saved.verification_code,
+            }
+        ))
         return RegisterResponse(message="Success", user=self._to_public_user(saved), code=201)
 
     def verify(self, request: VerifyRequest) -> VerifyResponse:

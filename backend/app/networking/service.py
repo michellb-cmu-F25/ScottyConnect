@@ -32,6 +32,7 @@ class NetworkingService:
         self._dao = dao or AppointmentDAO()
         self._mediator = NetworkingMediator(self._dao)
         self._invite_policy_factory = InvitePolicyFactory()
+        self.key = NETWORKING_SERVICE_EXTENSION_KEY
 
     # Preserve booked wall-clock time by stripping timezone info.
     @staticmethod

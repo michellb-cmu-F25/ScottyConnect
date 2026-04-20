@@ -38,6 +38,7 @@ class TasksService(Service):
         user_dao: UserAccountDAO | None = None,
     ) -> None:
         super().__init__()
+        self.key = TASKS_SERVICE_EXTENSION_KEY
         self._dao = task_dao or TaskDAO()
         self._lifecycle_dao = lifecycle_dao or LifecycleDAO()
         self.subscribeToMessages([MessageType.LIFECYCLE_MESSAGE])

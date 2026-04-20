@@ -29,6 +29,7 @@ def get_lifecycle_service() -> "LifecycleService":
 class LifecycleService(Service):
     def __init__(self, lifecycle_dao: LifecycleDAO | None = None) -> None:
         super().__init__()
+        self.key = LIFECYCLE_SERVICE_EXTENSION_KEY
         self._dao = lifecycle_dao or LifecycleDAO()
 
     @staticmethod
@@ -109,7 +110,7 @@ class LifecycleService(Service):
 
         # Notify TasksService so they can react to the state change.
         # e.g. If an event transitions to "completed", TasksService might mark related tasks as done.
-        MessageBus.publish(
+        self.publishMessage(
             Message(
                 MessageType.LIFECYCLE_MESSAGE,
                 {
@@ -119,6 +120,18 @@ class LifecycleService(Service):
                 },
             )
         )
+
+        # Notify users that the event has been cancelled.
+        if target_status == "cancelled":
+            self.publishMessage(
+                Message(
+                    MessageType.EVENT_CANCELLED,
+                    {
+                        "event_id": event_id,
+                        "event_info": self._to_public_event(event).model_dump(mode="json"),
+                    },
+                )
+            )
 
         return EventResponse(
             message="Success",
