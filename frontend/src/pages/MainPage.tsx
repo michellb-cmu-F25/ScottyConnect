@@ -7,6 +7,7 @@ import {
   getUserPreference,
   setUserPreference,
 } from '../services/RecommendationService'
+import { getRegisteredUsers } from '../services/AttendanceService'
 import RecommendationSettingsModal from '../components/RecommendationSettingsModal'
 import type { StoredEvent } from '../types/event'
 import '../styles/Main.css'
@@ -43,7 +44,8 @@ function formatEventDate(ev: StoredEvent): string {
 }
 
 function formatSpots(ev: StoredEvent): string {
-  if (ev.capacity) return `0 / ${ev.capacity}`
+  if (ev.status != "published") return 'Closed'
+  if (ev.registeredCount) return `${ev.registeredCount} going`
   return 'Open'
 }
 
@@ -52,6 +54,7 @@ export default function MainPage() {
   const isLoggedIn = !!userId && !!StorageUtil.getToken()
 
   const [events, setEvents] = useState<StoredEvent[]>([])
+  const [eventsLoading, setEventsLoading] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [myCreatedCount, setMyCreatedCount] = useState<number | null>(null)
   const [strategy, setStrategy] = useState<RecommendationStrategy>(() =>
@@ -98,15 +101,26 @@ export default function MainPage() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
+      if (!cancelled) {
+        setEventsLoading(true)
+      }
       try {
         if (isLoggedIn && userId) {
           const list = await getRecommendations(userId, strategy, 20)
+          await Promise.all(list.map(async (ev) => {
+            const users = await getRegisteredUsers(ev.id)
+            ev.registeredCount = users.length
+          }))
           if (!cancelled) {
             setEvents(list.map(apiEventToStored))
             setLoadError('')
           }
         } else {
           const list = await listPublishedEvents()
+          await Promise.all(list.map(async (ev) => {
+            const users = await getRegisteredUsers(ev.id)
+            ev.registeredCount = users.length
+          }))
           if (!cancelled) {
             setEvents(list.map(apiEventToStored))
             setLoadError('')
@@ -114,6 +128,10 @@ export default function MainPage() {
         }
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Failed to load events')
+      } finally {
+        if (!cancelled) {
+          setEventsLoading(false)
+        }
       }
     })()
     return () => {
@@ -219,6 +237,9 @@ export default function MainPage() {
             )}
           </div>
           {loadError && <p className="main-section-desc" role="alert">{loadError}</p>}
+          {eventsLoading && !loadError && (
+            <p className="main-section-desc" aria-live="polite">Loading events...</p>
+          )}
           <ul className="main-event-list">
             {events.map((ev) => (
               <li key={ev.id}>
@@ -237,7 +258,7 @@ export default function MainPage() {
               </li>
             ))}
           </ul>
-          {events.length === 0 && !loadError && (
+          {events.length === 0 && !loadError && !eventsLoading && (
             <p className="main-section-desc">No published events yet.</p>
           )}
         </section>

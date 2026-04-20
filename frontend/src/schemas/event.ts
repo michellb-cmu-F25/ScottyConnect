@@ -13,6 +13,7 @@ export interface PublicEvent {
   ownerId: string
   createdAt: string
   updatedAt: string
+  registeredCount: number
 }
 
 export function apiEventFromSnake(raw: Record<string, unknown>): PublicEvent {
@@ -26,6 +27,7 @@ export function apiEventFromSnake(raw: Record<string, unknown>): PublicEvent {
     endTime: (event.endTime as string) ?? null,
     location: (event.location as string) ?? null,
     capacity: (event.capacity as number) ?? null,
+    registeredCount: (event.registeredCount as number) ?? 0,
     status: event.status as PublicEvent['status'],
     ownerId: event.ownerId as string,
     createdAt: event.createdAt as string,

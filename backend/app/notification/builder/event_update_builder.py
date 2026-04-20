@@ -16,8 +16,8 @@ class EventUpdateBuilder(EmailBuilder):
         
     def fill_template(self):
         self.body = self.template.format(
-            previous_event_info=self.message.data["previous_event_info"],
-            updated_event_info=self.message.data["updated_event_info"]
+            previous_event_info=self._event_json_to_string(self.message.data["previous_event_info"]),
+            updated_event_info=self._event_json_to_string(self.message.data["updated_event_info"])
         )
         
     def build(self) -> Email:

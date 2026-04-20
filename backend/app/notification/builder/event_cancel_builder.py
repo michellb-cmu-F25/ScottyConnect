@@ -16,7 +16,7 @@ class EventCancelBuilder(EmailBuilder):
         
     def fill_template(self):
         self.body = self.template.format(
-            event_info=self.message.data["event_info"]
+            event_info=self._event_json_to_string(self.message.data["event_info"])
         )
         
     def build(self) -> Email:

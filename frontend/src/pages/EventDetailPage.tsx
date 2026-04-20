@@ -5,6 +5,7 @@ import {
   getRegistrationStatus,
   registerEvent,
   unregisterEvent,
+  getRegisteredUsers,
 } from '../services/AttendanceService'
 import type { StoredEvent } from '../types/event'
 import '../styles/EventDetail.css'
@@ -47,9 +48,11 @@ function formatDateTime(ev: StoredEvent): string {
 }
 
 // Format the capacity of the event
-function formatCapacity(capacity: number | null): string {
-  if (capacity == null) return 'Open registration'
-  return `${capacity} spots available`
+function formatCapacity(ev: StoredEvent): string {
+  if (ev.status != "published") return 'Closed'
+  if (ev.capacity == null) return 'Open registration'
+  if (ev.registeredCount == null) return 'Open registration'
+  return `${ev.capacity - ev.registeredCount} / ${ev.capacity} spots remaining`
 }
 
 export default function EventDetailPage() {
@@ -74,6 +77,8 @@ export default function EventDetailPage() {
     ;(async () => {
       try {
         const ev = await getEvent(id)
+        const registeredUsers = await getRegisteredUsers(id)
+        ev.registeredCount = registeredUsers.length
         if (!cancelled) {
           setEvent(apiEventToStored(ev))
           setLoadError('')
@@ -220,8 +225,8 @@ export default function EventDetailPage() {
                 <dd>{event.location || 'TBA'}</dd>
               </div>
               <div className="event-detail-item">
-                <dt>Capacity</dt>
-                <dd>{formatCapacity(event.capacity)}</dd>
+                <dt>Registration Status</dt>
+                <dd>{formatCapacity(event)}</dd>
               </div>
             </dl>
           </article>
