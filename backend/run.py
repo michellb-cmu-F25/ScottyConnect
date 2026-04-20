@@ -12,6 +12,22 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Enable INFO level logging",
     )
+    parser.add_argument(
+        "--host",
+        default=os.getenv("HOST", "0.0.0.0"),
+        help="Host interface to bind the web server",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("PORT", "5000")),
+        help="Port to bind the web server",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable Flask debug mode",
+    )
     return parser.parse_args()
 
 
@@ -28,6 +44,7 @@ if __name__ == "__main__":
     _configure_logging(args.info)
     app = create_app()
     is_reloader_child = os.environ.get("WERKZEUG_RUN_MAIN") == "true"
-    if is_reloader_child:
+    should_start_worker = (not args.debug) or is_reloader_child
+    if should_start_worker:
         app.extensions[NOTIFICATION_SERVICE_EXTENSION_KEY].start_worker()
-    app.run(debug=True)
+    app.run(debug=args.debug, host=args.host, port=args.port)
