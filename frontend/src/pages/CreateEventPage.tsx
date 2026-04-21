@@ -1,12 +1,44 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createEvent as createEventAPI, setEventTags } from '../services/LifecycleService'
+import {
+  createEvent as createEventAPI,
+  setEventTags,
+  apiEventToStored,
+} from '../services/LifecycleService'
 import EventTagSelector from '../components/EventTagSelector'
 import { DEFAULT_EVENT_TAG_IDS } from '../common/EventTagDefaults'
 import type { EventFormData, StoredEvent } from '../types/event'
 import '../styles/CreateEvent.css'
 
 export type { EventFormData, StoredEvent }
+
+/** Same schedule line as the old confirmation page / modal summary */
+export function formatPublishedSummaryDate(ev: StoredEvent): string {
+  const d = new Date(ev.date + 'T00:00:00')
+  const dateStr = d.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+  if (!ev.startTime) return dateStr
+  const [h, m] = ev.startTime.split(':')
+  const hour = parseInt(h, 10)
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const h12 = hour % 12 || 12
+  let timeStr = `${h12}:${m} ${ampm}`
+  if (ev.endTime) {
+    const [eh, em] = ev.endTime.split(':')
+    const eHour = parseInt(eh, 10)
+    const eAmpm = eHour >= 12 ? 'PM' : 'AM'
+    const eH12 = eHour % 12 || 12
+    timeStr += ` – ${eH12}:${em} ${eAmpm}`
+  }
+  return `${dateStr} · ${timeStr}`
+}
+
+/** Return value when publish succeeds — triggers the in-form success modal */
+export type EventSaveResult = { published: StoredEvent } | undefined
 
 /** Local calendar date YYYY-MM-DD */
 function getLocalDateString(d: Date): string {
@@ -122,7 +154,7 @@ interface EventFormProps {
     form: EventFormData,
     status: StoredEvent['status'],
     tagIds: string[],
-  ) => void | Promise<void>
+  ) => void | Promise<EventSaveResult>
 }
 
 export function EventForm({
@@ -137,6 +169,8 @@ export function EventForm({
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
   const [showDraftModal, setShowDraftModal] = useState(false)
+  const [showPublishedModal, setShowPublishedModal] = useState(false)
+  const [publishedSnapshot, setPublishedSnapshot] = useState<StoredEvent | null>(null)
   const [form, setForm] = useState<EventFormData>(initialData ?? EMPTY_FORM)
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
     () => new Set(initialTagIds ?? DEFAULT_EVENT_TAG_IDS),
@@ -211,9 +245,13 @@ export function EventForm({
     if (!isValid) return
     setSubmitting(true)
     try {
-      await onSave(form, status, Array.from(selectedTagIds))
+      const result = await onSave(form, status, Array.from(selectedTagIds))
       if (status === 'draft') {
         setShowDraftModal(true)
+      }
+      if (status === 'published' && result?.published) {
+        setPublishedSnapshot(result.published)
+        setShowPublishedModal(true)
       }
     } finally {
       setSubmitting(false)
@@ -225,7 +263,11 @@ export function EventForm({
     if (!isValid) return
     setSubmitting(true)
     try {
-      await onSave(form, 'published', Array.from(selectedTagIds))
+      const result = await onSave(form, 'published', Array.from(selectedTagIds))
+      if (result?.published) {
+        setPublishedSnapshot(result.published)
+        setShowPublishedModal(true)
+      }
     } finally {
       setSubmitting(false)
     }
@@ -453,19 +495,90 @@ export function EventForm({
           </div>
         </div>
       )}
+
+      {showPublishedModal && publishedSnapshot && (
+        <div
+          className="draft-modal-overlay"
+          onClick={() => {
+            setShowPublishedModal(false)
+            setPublishedSnapshot(null)
+          }}
+        >
+          <div
+            className="draft-modal draft-modal--published"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="published-modal-title"
+          >
+            <div className="published-modal-celebrate" aria-hidden>
+              <div className="published-modal-celebrate__ring" />
+              {Array.from({ length: 12 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="published-modal-confetti"
+                  style={{ '--n': i } as CSSProperties}
+                />
+              ))}
+              <div className="published-modal-celebrate__icon-wrap">
+                <div className="draft-modal-icon published-modal-celebrate__check">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <path d="M22 4 12 14.01l-3-3" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <h2 id="published-modal-title" className="draft-modal-title published-modal-title">
+              Event Published Successfully
+            </h2>
+            <div className="draft-modal-summary">
+              <h3 className="draft-modal-summary-title">{publishedSnapshot.title}</h3>
+              <p className="draft-modal-summary-meta">{formatPublishedSummaryDate(publishedSnapshot)}</p>
+              {publishedSnapshot.location && (
+                <p className="draft-modal-summary-meta">{publishedSnapshot.location}</p>
+              )}
+              {publishedSnapshot.capacity != null && publishedSnapshot.capacity > 0 && (
+                <p className="draft-modal-summary-meta">Capacity: {publishedSnapshot.capacity}</p>
+              )}
+              {publishedSnapshot.description.trim() !== '' && (
+                <p className="draft-modal-summary-desc">{publishedSnapshot.description}</p>
+              )}
+            </div>
+            <p className="draft-modal-message">
+              You can now go to My Events to manage this event and create event tasks.
+            </p>
+            <div className="draft-modal-actions">
+              <button
+                type="button"
+                className="draft-modal-btn draft-modal-btn-primary"
+                onClick={() => navigate('/my-events')}
+              >
+                Go to My Events
+              </button>
+              <button
+                type="button"
+                className="draft-modal-btn draft-modal-btn-secondary"
+                onClick={() => navigate('/mainpage')}
+              >
+                Back to Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function CreateEventPage() {
-  const navigate = useNavigate()
   const [error, setError] = useState('')
 
   async function handleSave(
     form: EventFormData,
     status: StoredEvent['status'],
     tagIds: string[],
-  ) {
+  ): Promise<EventSaveResult> {
     setError('')
     try {
       const saved = await createEventAPI(form, status as 'draft' | 'published')
@@ -478,11 +591,12 @@ export default function CreateEventPage() {
         }
       }
       if (status === 'published') {
-        navigate('/event-published', { state: { eventId: saved.id } })
+        return { published: apiEventToStored(saved) }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create event')
     }
+    return undefined
   }
 
   return (

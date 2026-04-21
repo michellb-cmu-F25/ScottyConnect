@@ -7,7 +7,13 @@ import {
   getEventTags,
   setEventTags,
 } from '../services/LifecycleService'
-import { storedToForm, EventForm, type EventFormData, type StoredEvent } from './CreateEventPage'
+import {
+  storedToForm,
+  EventForm,
+  type EventFormData,
+  type StoredEvent,
+  type EventSaveResult,
+} from './CreateEventPage'
 import '../styles/CreateEvent.css'
 
 export default function EditEventPage() {
@@ -64,12 +70,12 @@ export default function EditEventPage() {
     form: EventFormData,
     status: StoredEvent['status'],
     tagIds: string[],
-  ) {
+  ): Promise<EventSaveResult> {
     const current = event
-    if (!current) return
+    if (!current) return undefined
     setSaveError('')
     try {
-      await updateEvent(current.id, form, status as 'draft' | 'published')
+      const updated = await updateEvent(current.id, form, status as 'draft' | 'published')
       // Save tags (best-effort — don't block event save if tags fail).
       try {
         await setEventTags(current.id, tagIds)
@@ -77,13 +83,13 @@ export default function EditEventPage() {
         console.error('Failed to save event tags:', tagErr)
       }
       if (status === 'published') {
-        navigate('/event-published', { state: { eventId: current.id } })
-      } else {
-        navigate('/my-events')
+        return { published: apiEventToStored(updated) }
       }
+      navigate('/my-events')
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Failed to save')
     }
+    return undefined
   }
 
   return (

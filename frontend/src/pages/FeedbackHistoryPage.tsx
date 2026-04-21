@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
 import { apiUrl } from '../services/Config'
+import { getLifecycleClockSearch } from '../services/LifecycleService'
 import '../styles/FeedbackHistory.css'
 
 interface FeedbackItem {
@@ -58,7 +59,7 @@ export default function FeedbackHistoryPage() {
       const uniqueEventIds = [...new Set(items.map(f => f.event_id))]
       const eventResponses = await Promise.all(
         uniqueEventIds.map(id =>
-          fetch(apiUrl(`/api/lifecycle/events/${id}`), {
+          fetch(apiUrl(`/api/lifecycle/events/${id}${getLifecycleClockSearch()}`), {
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           })
         )

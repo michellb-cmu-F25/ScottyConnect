@@ -3,6 +3,22 @@ import { apiUrl } from './Config'
 import { apiEventFromSnake, type PublicEvent } from '../schemas/event'
 import type { StoredEvent } from '../types/event'
 
+
+function clientTzQueryParam(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (tz) return `client_tz=${encodeURIComponent(tz)}`
+  } catch {
+    /* ignore */
+  }
+  return ''
+}
+
+export function getLifecycleClockSearch(): string {
+  const p = clientTzQueryParam()
+  return p ? `?${p}` : ''
+}
+
 interface APIEventResponse {
   message: string
   event: Record<string, unknown> | null
@@ -69,7 +85,8 @@ export async function createEvent(
 }
 
 export async function getEvent(eventId: string): Promise<PublicEvent> {
-  const res = await fetch(apiUrl(`/api/lifecycle/events/${encodeURIComponent(eventId)}`), {
+  const path = `/api/lifecycle/events/${encodeURIComponent(eventId)}${getLifecycleClockSearch()}`
+  const res = await fetch(apiUrl(path), {
     headers: authHeaders(),
   })
   const data: APIEventResponse = await res.json()
@@ -80,7 +97,8 @@ export async function getEvent(eventId: string): Promise<PublicEvent> {
 }
 
 export async function listMyEvents(): Promise<PublicEvent[]> {
-  const res = await fetch(apiUrl('/api/lifecycle/events/mine'), {
+  const path = `/api/lifecycle/events/mine${getLifecycleClockSearch()}`
+  const res = await fetch(apiUrl(path), {
     headers: authHeaders(),
   })
   const data: APIEventListResponse = await res.json()
@@ -91,7 +109,8 @@ export async function listMyEvents(): Promise<PublicEvent[]> {
 }
 
 export async function listPublishedEvents(): Promise<PublicEvent[]> {
-  const res = await fetch(apiUrl('/api/lifecycle/events/published'))
+  const path = `/api/lifecycle/events/published${getLifecycleClockSearch()}`
+  const res = await fetch(apiUrl(path))
   const data: APIEventListResponse = await res.json()
   if (!res.ok) {
     throw new Error(data.message || 'Failed to load events')
