@@ -177,6 +177,12 @@
   border-color: #d1d5db;
 }
 
+.event-detail-register-btn.unregister:disabled {
+  color: #4b5563;
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
 .event-detail-register-btn.unregister {
   background: var(--white);
   color: var(--carnegie-red);

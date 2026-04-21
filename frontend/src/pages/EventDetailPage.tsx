@@ -249,7 +249,9 @@ export default function EventDetailPage() {
             <div className="event-detail-actions">
               <button
                 type="button"
-                className={`event-detail-register-btn ${isRegistered ? 'unregister' : ''}`}
+                className={`event-detail-register-btn ${
+                  isRegistered && isPublished ? 'unregister' : ''
+                }`}
                 disabled={isRegistrationButtonDisabled}
                 onClick={handleRegistrationClick}
               >
