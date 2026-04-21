@@ -91,13 +91,11 @@ class FeedbackDAO:
 
     # --- Attendance cross-checks ---
 
-    # Returns the user IDs of all confirmed attendees for an event.
+    # Returns the user IDs of all registered users for an event.
     # These are the users for whom the feedback window is opened when an event ends.
+    # Uses registration (not check-in) as eligibility since the app does not track check-ins.
     def find_attendees_by_event(self, event_id: str) -> list[str]:
-        cursor = self._attendance_col.find({
-            "event_id": event_id,
-            "attendance_time": {"$ne": None},
-        })
+        cursor = self._attendance_col.find({"event_id": event_id})
         user_ids = []
         for doc in cursor:
             user_id = doc.get("user_id")
@@ -105,12 +103,11 @@ class FeedbackDAO:
                 user_ids.append(user_id)
         return user_ids
 
-    # Checks whether a single user has a confirmed attendance record for an event.
+    # Checks whether a single user has a registration record for an event.
     # Used as the eligibility gate when a user attempts to submit feedback.
     def find_attendance_record(self, event_id: str, participant_id: str) -> bool:
         doc = self._attendance_col.find_one({
             "event_id": event_id,
             "user_id": participant_id,
-            "attendance_time": {"$ne": None},
         })
         return doc is not None
