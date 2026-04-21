@@ -80,7 +80,7 @@ class FeedbackService(Service):
         saved = self._dao.insert(feedback)
 
         # Notify Notification, Recommendation, and OrganizerProfile modules.
-        MessageBus.publish(
+        self.publishMessage(
             Message(
                 MessageType.FEEDBACK_MESSAGE,
                 {
@@ -158,17 +158,3 @@ class FeedbackService(Service):
             if new_status == "ended":
                 eligible_user_ids = self._dao.find_attendees_by_event(event_id)
                 self._dao.enable_feedback(event_id, eligible_user_ids)
-
-                MessageBus.publish(
-                    Message(
-                        MessageType.FEEDBACK_MESSAGE,
-                        {
-                            "action": "feedback_enabled",
-                            "event_id": event_id,
-                            "eligible_user_ids": eligible_user_ids,
-                        },
-                    )
-                )
-
-    def publishMessage(self, message: Message) -> None:
-        MessageBus.publish(message)

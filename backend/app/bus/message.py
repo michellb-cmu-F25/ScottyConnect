@@ -21,8 +21,9 @@ class MessageType(Enum):
     EVENT_UPDATED = "EVENT_UPDATED"
     # Should send attendance recorded email.
     ATTENDANCE_RECORDED = "ATTENDANCE_RECORDED"
-
+    # Should send feedback submitted email.
     FEEDBACK_MESSAGE = "FEEDBACK_MESSAGE"
+    
     LIFECYCLE_MESSAGE = "LIFECYCLE_MESSAGE"
     # Networking related messages
     NETWORKING_MESSAGE = "NETWORKING_MESSAGE"

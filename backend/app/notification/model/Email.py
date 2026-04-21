@@ -17,6 +17,7 @@ class EmailType(str, Enum):
     EVENT_CANCELLED = "EVENT_CANCELLED"
     EVENT_UPDATED = "EVENT_UPDATED"
     ATTENDANCE_RECORDED = "ATTENDANCE_RECORDED"
+    FEEDBACK_SUBMITTED = "FEEDBACK_SUBMITTED"
 
 class Email(BaseModel):
     id: str | None = None

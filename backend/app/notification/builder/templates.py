@@ -118,7 +118,18 @@ class EmailTemplates(Enum):
         "ScottyConnect Attendance Confirmation",
         EmailType.ATTENDANCE_RECORDED,
     )
+    FEEDBACK_SUBMITTED = EmailTemplate(
+        """
+        ScottyConnect New Event Feedback
 
+        Someone provided feedback for your event:
+        {event_info}
+
+        You can view the feedback in the app.
+        """,
+        "ScottyConnect Feedback Available",
+        EmailType.FEEDBACK_SUBMITTED,
+    )
     @staticmethod
     def message_type_to_email_template(message_type: MessageType) -> EmailTemplate:
         if message_type == MessageType.REGISTER_MESSAGE:
@@ -135,5 +146,7 @@ class EmailTemplates(Enum):
             return EmailTemplates.EVENT_UPDATED.value
         elif message_type == MessageType.ATTENDANCE_RECORDED:
             return EmailTemplates.ATTENDANCE_RECORDED.value
+        elif message_type == MessageType.FEEDBACK_MESSAGE:
+            return EmailTemplates.FEEDBACK_SUBMITTED.value
         else:
             raise ValueError(f"Invalid message type: {message_type}")
