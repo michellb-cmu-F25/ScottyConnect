@@ -9,7 +9,7 @@ from typing import List, Optional
 from bson import ObjectId
 
 from app.networking.model.Appointment import Appointment, AppointmentStatus
-from app.utils.db import Database, get_database, to_domain_model
+from app.utils.db import Database, get_database
 
 APPOINTMENTS_COLLECTION = "appointments"
 
@@ -165,4 +165,11 @@ class AppointmentDAO:
 
     # Helper to convert MongoDB document to Appointment Pydantic model.
     def _to_appointment(self, doc: dict | None) -> Optional[Appointment]:
-        return to_domain_model(doc, Appointment)
+        if doc is None:
+            return None
+        payload = dict(doc)
+        oid = payload.pop("_id", None)
+        if oid is not None:
+            payload["id"] = str(oid)
+        return Appointment.model_validate(payload)
+
