@@ -36,14 +36,11 @@ class StudentInvitePolicy:
         dao: "AppointmentDAO",
         now: datetime,
     ) -> tuple[bool, str | None]:
+        if dao.has_active_meeting_between_users(sender_id, receiver_id):
+            return False, "You already have an active interaction with this person"
+
         if receiver_role.upper() != "ALUMNI":
             return True, None
-
-        if dao.has_pending_invite_between_users(
-            sender_id=sender_id,
-            receiver_id=receiver_id,
-        ):
-            return False, "You already have a pending invitation with this alumni"
 
         if dao.has_invited_receiver_by_sender_role_and_day(
             sender_id=sender_id,
@@ -76,4 +73,7 @@ class AlumniInvitePolicy:
         dao: "AppointmentDAO",
         now: datetime,
     ) -> tuple[bool, str | None]:
+        if dao.has_active_meeting_between_users(sender_id, receiver_id):
+            return False, "You already have an active interaction with this person"
+            
         return True, None
