@@ -82,7 +82,7 @@ class NetworkingService(ICoffeeChatMediator):
 
         # 4. Event Notification
         if saved.id:
-            self._publish_message(
+            self.publishMessage(
                 MessageType.COFFEE_CHAT_REQUESTED,
                 {"sender_id": sender.user_id, "receiver_id": receiver_id, "invite_id": saved.id}
             )
@@ -101,9 +101,10 @@ class NetworkingService(ICoffeeChatMediator):
             new_status=status,
         )
 
+        appt = self._dao.find_by_id(invite_id)
         if updated:
             msg_type = MessageType.COFFEE_CHAT_ACCEPTED if accept else MessageType.COFFEE_CHAT_DECLINED
-            self._publish_message(msg_type, {"invite_id": invite_id, "responder_id": responder.user_id})
+            self.publishMessage(msg_type, {"invite_id": invite_id, "sender_id": appt.sender_id, "receiver_id": appt.receiver_id, "responder_id": responder.user_id})
             return True
 
         return False
@@ -194,7 +195,12 @@ class NetworkingService(ICoffeeChatMediator):
             appointment_id, expected_status=appt.status, new_status=AppointmentStatus.CANCELLED
         )
         if success:
-             return AppointmentResponse(message="Invitation cancelled", code=200)
+            # Publish COFFEE_CHAT_CANCELLED message.
+            self.publishMessage(
+                MessageType.COFFEE_CHAT_CANCELLED,
+                {"invite_id": appointment_id, "sender_id": sender_id, "receiver_id": appt.receiver_id}
+            )
+            return AppointmentResponse(message="Invitation cancelled", code=200)
 
         return AppointmentResponse(message="Cancellation failed", code=400)
 
@@ -226,7 +232,7 @@ class NetworkingService(ICoffeeChatMediator):
 
     # --- Internal Helpers ---
 
-    def _publish_message(self, msg_type: MessageType, data: dict):
+    def publishMessage(self, msg_type: MessageType, data: dict):
         MessageBus.publish(Message(msg_type, data))
 
     @staticmethod

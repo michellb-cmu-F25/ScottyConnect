@@ -26,6 +26,10 @@ from app.notification.builder.attendance_builder import AttendanceBuilder
 from app.notification.builder.event_reminder_builder import EventReminderBuilder
 from app.notification.builder.event_cancel_builder import EventCancelBuilder
 from app.notification.builder.feedback_builder import FeedbackBuilder
+from app.notification.builder.coffee_request_builder import CoffeeChatRequestBuilder
+from app.notification.builder.coffee_accept_builder import CoffeeChatAcceptedBuilder
+from app.notification.builder.coffee_decline_builder import CoffeeChatDeclinedBuilder
+from app.notification.builder.coffee_cancel_builder import CoffeeChatCancelledBuilder
 
 # Message Bus
 from app.bus.message_bus import Service
@@ -43,6 +47,10 @@ SUBSCRIBED_MESSAGE_TYPES = [
     MessageType.EVENT_UPDATED,
     MessageType.ATTENDANCE_RECORDED,
     MessageType.FEEDBACK_MESSAGE,
+    MessageType.COFFEE_CHAT_REQUESTED,
+    MessageType.COFFEE_CHAT_ACCEPTED,
+    MessageType.COFFEE_CHAT_DECLINED,
+    MessageType.COFFEE_CHAT_CANCELLED,
 ]
 
 class NotificationService(Service):
@@ -144,6 +152,85 @@ class NotificationService(Service):
         )
         return [FeedbackBuilder(complete_message).build()]
 
+    def _handle_coffee_chat_requested(self, message: Message) -> list[Email]:
+        data = dict(message.get_data())
+        sender_id = data.get("sender_id")
+        receiver_id = data.get("receiver_id")
+        invite_id = data.get("invite_id")
+        sender_name = self._dao.find_user_name_by_id(sender_id)
+        receiver_name = self._dao.find_user_name_by_id(receiver_id)
+        recipient_email = self._dao.find_user_email_by_id(receiver_id)
+        coffee_chat_info = self._dao.find_coffee_chat_info(invite_id)
+        complete_message = Message(MessageType.COFFEE_CHAT_REQUESTED, {
+            "sender_name": sender_name,
+            "receiver_name": receiver_name,
+            "recipient_email": recipient_email,
+            "coffee_chat_info": coffee_chat_info,
+        })
+        return [CoffeeChatRequestBuilder(complete_message).build()]
+
+    def _handle_coffee_chat_accepted(self, message: Message) -> list[Email]:
+        data = dict(message.get_data())
+        sender_id = data.get("sender_id")
+        receiver_id = data.get("receiver_id")
+        invite_id = data.get("invite_id")
+        sender_name = self._dao.find_user_name_by_id(sender_id)
+        receiver_name = self._dao.find_user_name_by_id(receiver_id)
+        recipient_email = self._dao.find_user_email_by_id(sender_id)
+        coffee_chat_info = self._dao.find_coffee_chat_info(invite_id)
+        complete_message = Message(MessageType.COFFEE_CHAT_ACCEPTED, {
+            "sender_name": sender_name,
+            "receiver_name": receiver_name,
+            "recipient_email": recipient_email,
+            "coffee_chat_info": coffee_chat_info,
+        })
+        return [CoffeeChatAcceptedBuilder(complete_message).build()]
+
+    def _handle_coffee_chat_declined(self, message: Message) -> list[Email]:
+        data = dict(message.get_data())
+        sender_id = data.get("sender_id")
+        receiver_id = data.get("receiver_id")
+        invite_id = data.get("invite_id")
+        sender_name = self._dao.find_user_name_by_id(sender_id)
+        receiver_name = self._dao.find_user_name_by_id(receiver_id)
+        recipient_email = self._dao.find_user_email_by_id(sender_id)
+        coffee_chat_info = self._dao.find_coffee_chat_info(invite_id)
+        complete_message = Message(MessageType.COFFEE_CHAT_DECLINED, {
+            "sender_name": sender_name,
+            "receiver_name": receiver_name,
+            "recipient_email": recipient_email,
+            "coffee_chat_info": coffee_chat_info,
+        })
+        return [CoffeeChatDeclinedBuilder(complete_message).build()]
+
+    def _handle_coffee_chat_cancelled(self, message: Message) -> list[Email]:
+        data = dict(message.get_data())
+        sender_id = data.get("sender_id")
+        receiver_id = data.get("receiver_id")
+        invite_id = data.get("invite_id")
+        sender_name = self._dao.find_user_name_by_id(sender_id)
+        receiver_name = self._dao.find_user_name_by_id(receiver_id)
+        sender_email = self._dao.find_user_email_by_id(sender_id)
+        receiver_email = self._dao.find_user_email_by_id(receiver_id)
+        coffee_chat_info = self._dao.find_coffee_chat_info(invite_id)
+        # Send email to the sender and receiver.
+        complete_message_sender = Message(MessageType.COFFEE_CHAT_CANCELLED, {
+            "sender_name": sender_name,
+            "receiver_name": receiver_name,
+            "recipient_email": sender_email,
+            "coffee_chat_info": coffee_chat_info,
+        })
+        complete_message_receiver = Message(MessageType.COFFEE_CHAT_CANCELLED, {
+            "sender_name": sender_name,
+            "receiver_name": receiver_name,
+            "recipient_email": receiver_email,
+            "coffee_chat_info": coffee_chat_info,
+        })
+        return [
+            CoffeeChatCancelledBuilder(complete_message_sender).build(), 
+            CoffeeChatCancelledBuilder(complete_message_receiver).build()
+        ]
+
     def processMessage(self, message: Message) -> None:
         message_type = message.get_type()
         handlers = {
@@ -155,6 +242,10 @@ class NotificationService(Service):
             MessageType.EVENT_UPDATED: self._handle_event_updated,
             MessageType.ATTENDANCE_RECORDED: self._handle_attendance_recorded,
             MessageType.FEEDBACK_MESSAGE: self._handle_feedback_message,
+            MessageType.COFFEE_CHAT_REQUESTED: self._handle_coffee_chat_requested,
+            MessageType.COFFEE_CHAT_ACCEPTED: self._handle_coffee_chat_accepted,
+            MessageType.COFFEE_CHAT_DECLINED: self._handle_coffee_chat_declined,
+            MessageType.COFFEE_CHAT_CANCELLED: self._handle_coffee_chat_cancelled,
         }
         handler = handlers.get(message_type)
         if handler is None:

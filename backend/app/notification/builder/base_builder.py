@@ -41,3 +41,11 @@ class EmailBuilder:
         Event Date: {event_info["date"]} {event_info["start_time"]} - {event_info["end_time"]}
         Event Location: {event_info["location"]}
         """
+
+    def _coffee_chat_json_to_string(self, sender_name: str, receiver_name: str, coffee_chat_info: dict) -> str:
+        return f"""
+        Coffee Chat Requester: {sender_name}
+        Coffee Chat Receiver: {receiver_name}
+        Coffee Chat Time: {coffee_chat_info["scheduled_at"]}
+        Current Status: {coffee_chat_info["status"]}
+        """

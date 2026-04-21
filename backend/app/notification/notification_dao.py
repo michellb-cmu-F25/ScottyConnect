@@ -14,6 +14,7 @@ EMAILS_COLLECTION = "emails"
 ATTENDANCE_RECORDS_COLLECTION = "attendance_records"
 USERS_COLLECTION = "users"
 EVENTS_COLLECTION = "events"
+APPOINTMENTS_COLLECTION = "appointments"
 
 class EmailDAO:
     def __init__(self, database: Database | None = None) -> None:
@@ -34,6 +35,10 @@ class EmailDAO:
     @property
     def _events_col(self):
         return self._database.db[EVENTS_COLLECTION]
+
+    @property
+    def _appointments_col(self):
+        return self._database.db[APPOINTMENTS_COLLECTION]
 
     def insert(self, email: Email) -> Email:
         # Keep datetimes as native BSON datetimes so range queries work.
@@ -85,6 +90,13 @@ class EmailDAO:
                 seen_emails.add(email)
                 recipient_emails.append(email)
         return recipient_emails
+
+    def find_user_name_by_id(self, user_id: str) -> str | None:
+        user_doc = self._users_col.find_one({"_id": ObjectId(user_id)})
+        if not user_doc:
+            return None
+        username = user_doc.get("username")
+        return username  
 
     def find_user_email_by_id(self, user_id: str) -> str | None:
         try:
@@ -152,6 +164,20 @@ class EmailDAO:
         except InvalidId:
             return None
         return event_doc
+
+    def find_coffee_chat_info(self, invite_id: str) -> dict | None:
+        appointment_doc = self._appointments_col.find_one({"_id": ObjectId(invite_id)})
+        if not appointment_doc:
+            return None
+        return {
+            "id": invite_id,
+            "sender_id": appointment_doc.get("sender_id"),
+            "receiver_id": appointment_doc.get("receiver_id"),
+            "scheduled_at": appointment_doc.get("scheduled_at"),
+            "status": appointment_doc.get("status"),
+            "created_at": appointment_doc.get("created_at"),
+            "updated_at": appointment_doc.get("updated_at"),
+        }
 
     @staticmethod
     def _to_email(doc: dict | None) -> Email | None:

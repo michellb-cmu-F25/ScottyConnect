@@ -130,6 +130,53 @@ class EmailTemplates(Enum):
         "ScottyConnect Feedback Available",
         EmailType.FEEDBACK_SUBMITTED,
     )
+
+    COFFEE_CHAT_REQUESTED = EmailTemplate(
+        """
+        ScottyConnect Coffee Chat Request
+        {sender_name} requested a coffee chat with you:
+        
+        {coffee_chat_info}
+
+        Please review the request and accept or decline it in the app.
+        """,
+        "ScottyConnect Coffee Chat Request",
+        EmailType.COFFEE_CHAT_REQUESTED,
+    )
+
+    COFFEE_CHAT_ACCEPTED = EmailTemplate(
+        """
+        ScottyConnect Coffee Chat Accepted
+        {sender_name} accepted your coffee chat request:
+        
+        {coffee_chat_info}
+        """,
+        "ScottyConnect Coffee Chat Accepted",
+        EmailType.COFFEE_CHAT_ACCEPTED,
+    )
+
+    COFFEE_CHAT_DECLINED = EmailTemplate(
+        """
+        ScottyConnect Coffee Chat Declined
+        {sender_name} declined your coffee chat request:
+        
+        {coffee_chat_info}
+        """,
+        "ScottyConnect Coffee Chat Declined",
+        EmailType.COFFEE_CHAT_DECLINED,
+    )
+
+    COFFEE_CHAT_CANCELLED = EmailTemplate(
+        """
+        ScottyConnect Coffee Chat Cancelled
+        This email confirms that the following coffee chat has been cancelled:
+
+        {coffee_chat_info}
+        """,
+        "ScottyConnect Coffee Chat Cancelled",
+        EmailType.COFFEE_CHAT_CANCELLED,
+    )
+
     @staticmethod
     def message_type_to_email_template(message_type: MessageType) -> EmailTemplate:
         if message_type == MessageType.REGISTER_MESSAGE:
@@ -148,5 +195,13 @@ class EmailTemplates(Enum):
             return EmailTemplates.ATTENDANCE_RECORDED.value
         elif message_type == MessageType.FEEDBACK_MESSAGE:
             return EmailTemplates.FEEDBACK_SUBMITTED.value
+        elif message_type == MessageType.COFFEE_CHAT_REQUESTED:
+            return EmailTemplates.COFFEE_CHAT_REQUESTED.value
+        elif message_type == MessageType.COFFEE_CHAT_ACCEPTED:
+            return EmailTemplates.COFFEE_CHAT_ACCEPTED.value
+        elif message_type == MessageType.COFFEE_CHAT_DECLINED:
+            return EmailTemplates.COFFEE_CHAT_DECLINED.value
+        elif message_type == MessageType.COFFEE_CHAT_CANCELLED:
+            return EmailTemplates.COFFEE_CHAT_CANCELLED.value
         else:
             raise ValueError(f"Invalid message type: {message_type}")
