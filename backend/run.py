@@ -20,7 +20,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--port",
         type=int,
-        default=int(os.getenv("PORT", "5000")),
+        default=int(os.getenv("PORT", "5001")),
         help="Port to bind the web server",
     )
     parser.add_argument(
