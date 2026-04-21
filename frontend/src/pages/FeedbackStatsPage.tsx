@@ -117,7 +117,7 @@ function FeedbackStats({ event, onClose }: FeedbackStatsProps) {
           </div>
           <div className="event-feedback-row">
             <span className="event-feedback-label">Average Rating:</span>
-            <span>{averageRating !== null ? `${averageRating} / 5` : '—'}</span>
+            <span>{averageRating !== null ? `${averageRating} / 5.0` : '—'}</span>
           </div>
         </section>
 

@@ -151,6 +151,17 @@ export default function MyEventsPage() {
       setFeedbackTarget(ev)
       return
     }
+    if (action === 'rate') {
+      navigate(`/events/${ev.id}/feedback`, {
+        state: {
+          title: ev.title,
+          date: ev.date,
+          startTime: ev.startTime,
+          endTime: ev.endTime,
+        },
+      })
+      return
+    }
     if (action === 'end') {
       setActionError('')
       try {
@@ -371,6 +382,24 @@ export default function MyEventsPage() {
                             >
                               Tasks
                             </button>
+                            {ev.status === 'ended' && (
+                              <button
+                                className="me-action-btn me-action-publish"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate(`/events/${ev.id}/feedback`, {
+                                    state: {
+                                      title: ev.title,
+                                      date: ev.date,
+                                      startTime: ev.startTime,
+                                      endTime: ev.endTime,
+                                    },
+                                  })
+                                }}
+                              >
+                                Rate This Event
+                              </button>
+                            )}
                             {ev.status === 'published' && (
                               <button
                                 className="me-action-btn me-action-danger"

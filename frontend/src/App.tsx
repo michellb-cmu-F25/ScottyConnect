@@ -11,6 +11,7 @@ import EventConfirmationPage from './pages/EventConfirmationPage'
 import EditEventPage from './pages/EditEventPage'
 import TaskBoardPage from './pages/TaskBoardPage'
 import FeedbackHistoryPage from './pages/FeedbackHistoryPage'
+import FeedbackSubmissionPage from './pages/FeedbackSubmissionPage'
 import MyMeetingsPage from './pages/MyMeetingsPage'
 import EventDetailPage from './pages/EventDetailPage'
 
@@ -37,7 +38,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/feedback" element={
-            <ProtectedRoute>
+          <ProtectedRoute>
             <FeedbackHistoryPage />
           </ProtectedRoute>
         } />
@@ -78,12 +79,17 @@ function App() {
             <TaskBoardPage />
           </ProtectedRoute>
         } />
+        <Route path="/events/:eventId/feedback" element={
+          <ProtectedRoute>
+            <FeedbackSubmissionPage />
+          </ProtectedRoute>
+        } />
         <Route path="/event-published" element={
           <ProtectedRoute>
             <EventConfirmationPage />
           </ProtectedRoute>
         } />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/mainpage" replace />} />
       </Routes>
     </BrowserRouter>
   )
