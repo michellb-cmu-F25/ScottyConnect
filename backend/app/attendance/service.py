@@ -13,8 +13,16 @@ from app.attendance.schemas import (
     AttendanceRecordResponse,
     AttendEventResponse,
     RegisterEventResponse,
+    ListEventsResponse,
 )
 from app.bus.message_bus import Service
+from app.bus.message import Message, MessageType
+from app.lifecycle.model.Event import Event
+from app.lifecycle.schemas import PublicEvent
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 ATTENDANCE_SERVICE_EXTENSION_KEY = "attendance_service"
 
@@ -27,6 +35,7 @@ def get_attendance_service() -> "AttendanceService":
 class AttendanceService(Service):
     def __init__(self, attendance_dao: AttendanceDAO | None = None) -> None:
         super().__init__()
+        self.key = ATTENDANCE_SERVICE_EXTENSION_KEY
         self._dao = attendance_dao or AttendanceDAO()
 
     @staticmethod
@@ -42,6 +51,23 @@ class AttendanceService(Service):
             created_at=user.created_at,
             updated_at=user.updated_at,
         )
+
+    @staticmethod
+    def _to_public_event(event: Event) -> PublicEvent:
+        return PublicEvent(
+            id=event.id,
+            title=event.title,
+            description=event.description,
+            date=event.date,
+            start_time=event.start_time,
+            end_time=event.end_time,
+            location=event.location,
+            capacity=event.capacity,
+            owner_id=event.owner_id,
+            status=event.status,
+            created_at=event.created_at.isoformat(),
+            updated_at=event.updated_at.isoformat(),
+        )
     # Registration operations
 
     # Registers a single user for an event.
@@ -54,7 +80,7 @@ class AttendanceService(Service):
         if existing_registration:
             return RegisterEventResponse(registered=True, message="User is already registered for this event.", code=409)
         self._dao.insert(AttendanceRecord(event_id=event_id, user_id=user_id))
-        # TODO: Send message to message bus to notify the user that they have been registered for the event
+        self.send_registration_confirmation(event, user_id)  
         return RegisterEventResponse(registered=True, message="Successfully registered for the event.", code=201)
 
     # Unregisters a single user from an event.
@@ -63,8 +89,11 @@ class AttendanceService(Service):
         registration = self._dao.find_record_by_event_and_user(event_id, user_id)
         if not registration:
             return RegisterEventResponse(registered=False, message="User is not registered for this event.", code=404)
+        event = self._dao.find_event_by_id(event_id)
+        if not event:
+            return RegisterEventResponse(registered=False, message="Event no longer available.", code=404)
+        self.send_registration_cancellation(event, user_id)
         self._dao.delete(registration.id)
-        # TODO: Send message to message bus to notify the user that they have been unregistered from the event
         return RegisterEventResponse(registered=False, message="Successfully unregistered from the event.", code=200)
 
     # Attendance operations
@@ -75,15 +104,15 @@ class AttendanceService(Service):
         # Verify that the organizer is the owner of the event
         event = self._dao.find_event_by_id(event_id)
         if not event:
-            return AttendEventResponse(message="Event no longer available.", code=404)
+            return AttendEventResponse(attended=False, message="Event no longer available.", code=404)
         if event.owner_id != organizer_id:
-            return AttendEventResponse(message="You are not the organizer of this event.", code=403)
+            return AttendEventResponse(attended=False, message="You are not the organizer of this event.", code=403)
         registration = self._dao.find_record_by_event_and_user(event_id, user_id)
         if not registration:
-            return AttendEventResponse(message="User is not registered for this event.", code=404)
+            return AttendEventResponse(attended=False, message="User is not registered for this event.", code=404)
         self._dao.update(registration.id, {"attendance_time": datetime.now(timezone.utc)})
         # TODO: Send message to message bus to notify the user that they have been marked as attended
-        return AttendEventResponse(message="Successfully marked as attended the event.", code=200)
+        return AttendEventResponse(attended=True, message="Successfully marked as attended the event.", code=200)
 
     # Marks a user as not attended an event.
     def unattend_event(self, event_id: str, user_id: str, organizer_id: str) -> AttendEventResponse:
@@ -91,15 +120,15 @@ class AttendanceService(Service):
         # Verify that the organizer is the owner of the event
         event = self._dao.find_event_by_id(event_id)
         if not event:
-            return AttendEventResponse(message="Event no longer available.", code=404)
+            return AttendEventResponse(attended=False, message="Event no longer available.", code=404)
         if event.owner_id != organizer_id:
-            return AttendEventResponse(message="You are not the organizer of this event.", code=403)
+            return AttendEventResponse(attended=False, message="You are not the organizer of this event.", code=403)
         registration = self._dao.find_record_by_event_and_user(event_id, user_id)
         if not registration:
-            return AttendEventResponse(message="User is not registered for this event.", code=404)
+            return AttendEventResponse(attended=False, message="User is not registered for this event.", code=404)
         self._dao.update(registration.id, {"attendance_time": None})
         # TODO: Send message to message bus to notify the user that they have been marked as not attended
-        return AttendEventResponse(message="Successfully marked as not attended the event.", code=200)
+        return AttendEventResponse(attended=False, message="Successfully marked as not attended the event.", code=200)
     
     # Retrieves all registered users for an event.
     def get_registered_users(self, event_id: str) -> AttendanceRecordResponse:
@@ -129,3 +158,59 @@ class AttendanceService(Service):
         if not registration:
             return RegisterEventResponse(registered=False, message="User is not registered for this event.", code=200)
         return RegisterEventResponse(registered=True, message="User is registered for this event.", code=200)
+
+    # Checks a user's attendance status for an event.
+    def get_attendance_status(self, event_id: str, user_id: str) -> AttendEventResponse:
+        """Checks a user's attendance status for an event."""
+        event = self._dao.find_event_by_id(event_id)
+        if not event:
+            return AttendEventResponse(attended=False, message="Event no longer available.", code=404)
+        attendance = self._dao.find_record_by_event_and_user(event_id, user_id)
+        if not attendance:
+            return AttendEventResponse(attended=False, message="User is not registered for this event.", code=404)
+        if attendance.attendance_time is None:
+            return AttendEventResponse(attended=False, message="User has not attended the event.", code=200)
+        return AttendEventResponse(attended=True, message="User has attended the event.", code=200)
+
+    # Retrieves all registered events for a user.
+    def get_registered_events(self, user_id: str) -> ListEventsResponse:
+        """Retrieves all registered events for a user."""
+        events = self._dao.get_registered_events(user_id)
+        return ListEventsResponse(events=[self._to_public_event(event) for event in events], message="Successfully retrieved all registered events for the user.", code=200)
+    
+    # Retrieves all attended events for a user.
+    def get_attended_events(self, user_id: str) -> ListEventsResponse:
+        """Retrieves all attended events for a user."""
+        events = self._dao.get_attended_events(user_id)
+        return ListEventsResponse(events=[self._to_public_event(event) for event in events], message="Successfully retrieved all attended events for the user.", code=200)
+
+
+    # Message Bus Helpers
+    def send_registration_confirmation(self, event: Event, user_id: str) -> None:
+        try:
+            user = self._dao.find_user_by_id(user_id)
+            if not user:
+                logger.error("User not found: %s", user_id)
+                return
+            self.publishMessage(Message(MessageType.EVENT_REGISTRATION_CONFIRMATION, {
+                    "event_id": event.id,
+                    "event_info": event.model_dump(mode="json"),
+                    "recipient_email": user.email,
+                }))
+        except Exception as e:
+            logger.error("Failed to publish EVENT_REGISTRATION_CONFIRMATION message: %s", e)
+        
+    def send_registration_cancellation(self, event: Event, user_id: str) -> None:
+        try:
+            user = self._dao.find_user_by_id(user_id)
+            if not user:
+                logger.error("User not found: %s", user_id)
+                return
+            self.publishMessage(Message(MessageType.EVENT_REGISTRATION_CANCELLED, {
+                "event_id": event.id,
+                "event_info": event.model_dump(mode="json"),
+                "recipient_email": user.email,
+            }))
+        except Exception as e:
+            logger.error("Failed to publish EVENT_REGISTRATION_CANCELLED message: %s", e)
+        

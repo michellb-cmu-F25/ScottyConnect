@@ -5,7 +5,7 @@ Defines the Colleagues in the Mediator pattern (Student and Alumni).
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Protocol, Union
+from typing import List, Protocol, Tuple, Optional
 
 from pydantic import BaseModel
 
@@ -18,7 +18,7 @@ class ICoffeeChatMediator(Protocol):
         receiver_id: str,
         scheduled_at: datetime,
         receiver_role: str,
-    ) -> bool:
+    ) -> Tuple[bool, Optional[str]]:
         ...
     def finalize_invite_response(self, responder: 'Participant', invite_id: str, accept: bool) -> bool:
         ...
@@ -44,10 +44,10 @@ class Participant(BaseModel, ABC):
         pass
 
     # Delegate invitation sending to the mediator.
-    def initiate_chat(self, receiver_id: str, scheduled_at: datetime, receiver_role: str) -> bool:
+    def initiate_chat(self, receiver_id: str, scheduled_at: datetime, receiver_role: str) -> Tuple[bool, Optional[str]]:
         if self._mediator:
             return self._mediator.dispatch_invite(self, receiver_id, scheduled_at, receiver_role)
-        return False
+        return False, "Mediator not configured"
 
     # Delegate invitation acceptance to the mediator.
     def accept_chat(self, invite_id: str) -> bool:

@@ -29,6 +29,7 @@ def get_feedback_service() -> "FeedbackService":
 class FeedbackService(Service):
     def __init__(self, feedback_dao: FeedbackDAO | None = None) -> None:
         super().__init__()
+        self.key = FEEDBACK_SERVICE_EXTENSION_KEY
         self._dao = feedback_dao or FeedbackDAO()
         # Subscribe to lifecycle events to be notified when events end.
         self.subscribeToMessages([MessageType.LIFECYCLE_MESSAGE])

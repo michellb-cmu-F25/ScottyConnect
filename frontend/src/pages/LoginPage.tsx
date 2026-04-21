@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import '../styles/Auth.css'
 import StorageUtil from '../common/StorageUtil'
+import { apiUrl } from '../services/Config'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -24,7 +25,7 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/accounts/login', {
+      const res = await fetch(apiUrl('/api/accounts/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.trim(), password: password.trim() }),

@@ -1,27 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, Navigate } from 'react-router-dom'
-import { getEvent, apiEventToStored } from '../services/eventApi'
+import { getEvent, apiEventToStored } from '../services/LifecycleService'
 import type { StoredEvent } from '../types/event'
+import { formatPublishedSummaryDate } from './CreateEventPage'
 import '../styles/EventConfirmation.css'
-
-function formatDate(ev: StoredEvent): string {
-  const d = new Date(ev.date + 'T00:00:00')
-  const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-  if (!ev.startTime) return dateStr
-  const [h, m] = ev.startTime.split(':')
-  const hour = parseInt(h, 10)
-  const ampm = hour >= 12 ? 'PM' : 'AM'
-  const h12 = hour % 12 || 12
-  let timeStr = `${h12}:${m} ${ampm}`
-  if (ev.endTime) {
-    const [eh, em] = ev.endTime.split(':')
-    const eHour = parseInt(eh, 10)
-    const eAmpm = eHour >= 12 ? 'PM' : 'AM'
-    const eH12 = eHour % 12 || 12
-    timeStr += ` – ${eH12}:${em} ${eAmpm}`
-  }
-  return `${dateStr} · ${timeStr}`
-}
 
 export default function EventConfirmationPage() {
   const location = useLocation()
@@ -73,7 +55,7 @@ export default function EventConfirmationPage() {
 
         <article className="conf-card">
           <h2 className="conf-card-name">{event.title}</h2>
-          <p className="conf-card-meta">{formatDate(event)}</p>
+          <p className="conf-card-meta">{formatPublishedSummaryDate(event)}</p>
           {event.location && <p className="conf-card-meta">{event.location}</p>}
           {event.capacity && (
             <p className="conf-card-meta">Capacity: {event.capacity}</p>

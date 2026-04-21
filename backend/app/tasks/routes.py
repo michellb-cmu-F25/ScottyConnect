@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 
 from app.tasks.schemas import (
     CreateTaskRequest,
@@ -10,19 +10,13 @@ from app.tasks.schemas import (
 from app.tasks.service import get_tasks_service
 from app.utils.doc import doc
 from app.utils.validate import validate
+from app.utils.auth import require_auth
 
 tasks = Blueprint("tasks", __name__)
 
 
-def _user_id() -> str | None:
-    # TODO: Replace with actual authentication mechanism (JWT) once implemented
-    # Extract user identifier from request header 
-    # Placeholder for JWT
-    return request.headers.get("X-User-Id")
-
-
 def _event_ctx() -> dict:
-    # Extract optional event-context headers supplied by the frontend for events that live only in localStorage and not yet in MongoDB)
+    # Extract optional event-context headers for events that live only in localStorage
     return {
         "fallback_owner_id": request.headers.get("X-Event-Owner-Id"),
         "fallback_status": request.headers.get("X-Event-Status"),
@@ -30,6 +24,7 @@ def _event_ctx() -> dict:
 
 
 @tasks.route("/events/<event_id>", methods=["POST"])
+@require_auth
 @validate(CreateTaskRequest)
 @doc(
     request=CreateTaskRequest,
@@ -39,18 +34,14 @@ def _event_ctx() -> dict:
     success_status=201,
 )
 def create_task(req: CreateTaskRequest, event_id: str):
-    uid = _user_id()
-
-    if not uid:
-        return jsonify({"message": "Missing X-User-Id header"}), 401
     resp = get_tasks_service().create_task(
-        event_id, req.title, req.description, req.parent_id, uid, **_event_ctx()
+        event_id, req.title, req.description, req.parent_id, g.user_id, **_event_ctx()
     )
-
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 
 @tasks.route("/events/<event_id>", methods=["GET"])
+@require_auth
 @doc(
     response=TaskTreeResponse,
     description="Get the full task tree for an event",
@@ -58,13 +49,12 @@ def create_task(req: CreateTaskRequest, event_id: str):
     success_status=200,
 )
 def get_task_tree(event_id: str):
-    uid = _user_id() or ""
-    resp = get_tasks_service().get_task_tree(event_id, uid, **_event_ctx())
-
+    resp = get_tasks_service().get_task_tree(event_id, g.user_id, **_event_ctx())
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 
 @tasks.route("/<task_id>", methods=["PUT"])
+@require_auth
 @validate(UpdateTaskRequest)
 @doc(
     request=UpdateTaskRequest,
@@ -74,18 +64,14 @@ def get_task_tree(event_id: str):
     success_status=200,
 )
 def update_task(req: UpdateTaskRequest, task_id: str):
-    uid = _user_id()
-    if not uid:
-        return jsonify({"message": "Missing X-User-Id header"}), 401
-
     resp = get_tasks_service().update_task(
-        task_id, uid, req.title, req.description, **_event_ctx()
+        task_id, g.user_id, req.title, req.description, **_event_ctx()
     )
-
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 
 @tasks.route("/<task_id>", methods=["DELETE"])
+@require_auth
 @doc(
     response=TaskResponse,
     description="Delete a task and all its sub-tasks",
@@ -93,16 +79,12 @@ def update_task(req: UpdateTaskRequest, task_id: str):
     success_status=200,
 )
 def delete_task(task_id: str):
-    uid = _user_id()
-    if not uid:
-        return jsonify({"message": "Missing X-User-Id header"}), 401
-
-    resp = get_tasks_service().delete_task(task_id, uid, **_event_ctx())
-
+    resp = get_tasks_service().delete_task(task_id, g.user_id, **_event_ctx())
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 
 @tasks.route("/<task_id>/claim", methods=["POST"])
+@require_auth
 @doc(
     response=TaskResponse,
     description="Claim an open task",
@@ -110,16 +92,25 @@ def delete_task(task_id: str):
     success_status=200,
 )
 def claim_task(task_id: str):
-    uid = _user_id()
-    if not uid:
-        return jsonify({"message": "Missing X-User-Id header"}), 401
+    resp = get_tasks_service().claim_task(task_id, g.user_id, **_event_ctx())
+    return jsonify(resp.model_dump(mode="json")), resp.code
 
-    resp = get_tasks_service().claim_task(task_id, uid, **_event_ctx())
 
+@tasks.route("/<task_id>/claim", methods=["DELETE"])
+@require_auth
+@doc(
+    response=TaskResponse,
+    description="Unclaim a claimed task (by the claimant or event owner)",
+    tags=["tasks"],
+    success_status=200,
+)
+def unclaim_task(task_id: str):
+    resp = get_tasks_service().unclaim_task(task_id, g.user_id, **_event_ctx())
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 
 @tasks.route("/<task_id>/contribute", methods=["POST"])
+@require_auth
 @validate(ContributeRequest)
 @doc(
     request=ContributeRequest,
@@ -129,12 +120,7 @@ def claim_task(task_id: str):
     success_status=200,
 )
 def contribute_task(req: ContributeRequest, task_id: str):
-    uid = _user_id()
-    if not uid:
-        return jsonify({"message": "Missing X-User-Id header"}), 401
-
     resp = get_tasks_service().contribute(
-        task_id, uid, req.contribution, **_event_ctx()
+        task_id, g.user_id, req.contribution, **_event_ctx()
     )
-    
     return jsonify(resp.model_dump(mode="json")), resp.code

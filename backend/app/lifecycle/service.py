@@ -4,6 +4,11 @@ Handles event lifecycle operations using LifecycleDAO for persistence
 and the State Pattern for transition/permission validation.
 """
 
+from datetime import datetime
+
+from app.attendance.attendance_dao import AttendanceDAO
+from app.bus.message import Message, MessageType
+from app.bus.message_bus import Service
 from app.lifecycle.lifecycle_dao import LifecycleDAO
 from app.lifecycle.model.Event import Event
 from app.lifecycle.schemas import (
@@ -13,10 +18,14 @@ from app.lifecycle.schemas import (
     PublicEvent,
     UpdateEventRequest,
 )
-from app.lifecycle.schedule_validation import validate_event_schedule
+from zoneinfo import ZoneInfo
+
+from app.lifecycle.schedule_validation import (
+    parse_event_end_datetime,
+    resolve_lifecycle_clock_tz,
+    validate_event_schedule,
+)
 from app.lifecycle.states import resolve_state
-from app.bus.message import Message, MessageType
-from app.bus.message_bus import MessageBus, Service
 LIFECYCLE_SERVICE_EXTENSION_KEY = "lifecycle_service"
 
 
@@ -27,9 +36,34 @@ def get_lifecycle_service() -> "LifecycleService":
 
 
 class LifecycleService(Service):
-    def __init__(self, lifecycle_dao: LifecycleDAO | None = None) -> None:
+    def __init__(
+        self,
+        lifecycle_dao: LifecycleDAO | None = None,
+        attendance_dao: AttendanceDAO | None = None,
+    ) -> None:
         super().__init__()
+        self.key = LIFECYCLE_SERVICE_EXTENSION_KEY
         self._dao = lifecycle_dao or LifecycleDAO()
+        self._attendance_dao = attendance_dao or AttendanceDAO()
+
+    def _can_read_event_detail(
+        self, event: Event, requester_id: str | None
+    ) -> bool:
+        """Public feed is published-only; owners and registered attendees may see other states."""
+        if event.status == "published":
+            return True
+        if requester_id is None:
+            return False
+        if requester_id == event.owner_id:
+            return True
+        if not event.id:
+            return False
+        return (
+            self._attendance_dao.find_record_by_event_and_user(
+                event.id, requester_id
+            )
+            is not None
+        )
 
     @staticmethod
     def _to_public_event(event: Event) -> PublicEvent:
@@ -47,6 +81,68 @@ class LifecycleService(Service):
             created_at=event.created_at.isoformat(),
             updated_at=event.updated_at.isoformat(),
         )
+
+    @staticmethod
+    def _published_schedule_end_has_passed(
+        event: Event, clock_tz: ZoneInfo
+    ) -> bool:
+        if event.status != "published":
+            return False
+        end_dt = parse_event_end_datetime(
+            event.date, event.end_time, clock_tz=clock_tz
+        )
+        if end_dt is None:
+            return False
+        return datetime.now(clock_tz) >= end_dt
+
+    def _persist_transition(self, event: Event, target_status: str) -> Event:
+        """Update status and emit the same bus notifications as ``transition``."""
+        old_status = event.status
+        event_id = event.id
+        if not event_id:
+            raise ValueError("Event id is required to persist a transition")
+        updated = self._dao.update_status(event_id, target_status)
+        self.publishMessage(
+            Message(
+                MessageType.LIFECYCLE_MESSAGE,
+                {
+                    "event_id": event_id,
+                    "new_status": target_status,
+                    "old_status": old_status,
+                },
+            )
+        )
+        if target_status == "cancelled":
+            self.publishMessage(
+                Message(
+                    MessageType.EVENT_CANCELLED,
+                    {
+                        "event_id": event_id,
+                        "event_info": self._to_public_event(event).model_dump(
+                            mode="json"
+                        ),
+                    },
+                )
+            )
+        if updated is None:
+            raise ValueError("Failed to load event after status update")
+        return updated
+
+    def _sync_expired_published_event(
+        self, event: Event, clock_tz: ZoneInfo
+    ) -> Event:
+        """
+        If a published event's scheduled end is in the past, persist ``ended``
+        using the same transition path as a manual end (state validation + bus).
+        """
+        if not self._published_schedule_end_has_passed(event, clock_tz):
+            return event
+        state = resolve_state(event.status)
+        try:
+            state.handle_transition("ended")
+        except ValueError:
+            return event
+        return self._persist_transition(event, "ended")
 
     def create_event(
         self, req: CreateEventRequest, owner_id: str
@@ -74,10 +170,22 @@ class LifecycleService(Service):
             code=201,
         )
 
-    def get_event(self, event_id: str) -> EventResponse:
+    def get_event(
+        self,
+        event_id: str,
+        requester_id: str | None = None,
+        client_tz: str | None = None,
+    ) -> EventResponse:
         event = self._dao.find_by_id(event_id)
         if event is None:
             return EventResponse(message="Event not found", event=None, code=404)
+
+        clock_tz = resolve_lifecycle_clock_tz(client_tz)
+        event = self._sync_expired_published_event(event, clock_tz)
+
+        if not self._can_read_event_detail(event, requester_id):
+            return EventResponse(message="Event not found", event=None, code=404)
+
         return EventResponse(
             message="Success",
             event=self._to_public_event(event),
@@ -104,21 +212,7 @@ class LifecycleService(Service):
         except ValueError as e:
             return EventResponse(message=str(e), event=None, code=400)
 
-        old_status = event.status
-        updated = self._dao.update_status(event_id, target_status)
-
-        # Notify TasksService so they can react to the state change.
-        # e.g. If an event transitions to "completed", TasksService might mark related tasks as done.
-        MessageBus.publish(
-            Message(
-                MessageType.LIFECYCLE_MESSAGE,
-                {
-                    "event_id": event_id,
-                    "new_status": target_status,
-                    "old_status": old_status,
-                },
-            )
-        )
+        updated = self._persist_transition(event, target_status)
 
         return EventResponse(
             message="Success",
@@ -126,19 +220,24 @@ class LifecycleService(Service):
             code=200,
         )
 
-    def list_mine(self, user_id: str) -> EventListResponse:
+    def list_mine(self, user_id: str, client_tz: str | None = None) -> EventListResponse:
+        clock_tz = resolve_lifecycle_clock_tz(client_tz)
         events = self._dao.find_by_owner(user_id)
+        synced = [self._sync_expired_published_event(e, clock_tz) for e in events]
         return EventListResponse(
             message="Success",
-            events=[self._to_public_event(e) for e in events],
+            events=[self._to_public_event(e) for e in synced],
             code=200,
         )
 
-    def list_published(self) -> EventListResponse:
+    def list_published(self, client_tz: str | None = None) -> EventListResponse:
+        clock_tz = resolve_lifecycle_clock_tz(client_tz)
         events = self._dao.find_by_status("published")
+        synced = [self._sync_expired_published_event(e, clock_tz) for e in events]
+        live = [e for e in synced if e.status == "published"]
         return EventListResponse(
             message="Success",
-            events=[self._to_public_event(e) for e in events],
+            events=[self._to_public_event(e) for e in live],
             code=200,
         )
 

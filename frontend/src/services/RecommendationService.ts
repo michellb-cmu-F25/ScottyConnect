@@ -1,5 +1,7 @@
-import StorageUtil, { type RecommendationStrategy } from '../common/StorageUtil'
-import type { EventFromAPI } from './eventApi'
+import { type RecommendationStrategy } from '../common/StorageUtil'
+import { authHeaders } from './ServiceUtils'
+import { apiUrl } from './Config'
+import { apiEventFromSnake, type PublicEvent } from '../schemas/event'
 
 interface APIRecommendationResponse {
   message: string
@@ -15,45 +17,19 @@ interface APIPreferenceResponse {
   code: number
 }
 
-function snakeToCamel(obj: Record<string, unknown>): EventFromAPI {
-  return {
-    id: obj.id as string,
-    title: obj.title as string,
-    description: obj.description as string,
-    date: (obj.date as string) ?? null,
-    startTime: (obj.start_time as string) ?? null,
-    endTime: (obj.end_time as string) ?? null,
-    location: (obj.location as string) ?? null,
-    capacity: (obj.capacity as number) ?? null,
-    status: obj.status as EventFromAPI['status'],
-    ownerId: obj.owner_id as string,
-    createdAt: obj.created_at as string,
-    updatedAt: (obj.updated_at as string) ?? '',
-  }
-}
-
-function authHeaders(): Record<string, string> {
-  const token = StorageUtil.getToken()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  return headers
-}
-
 /** Fetch ranked, published event recommendations for a user. */
 export async function getRecommendations(
   userId: string,
   strategy: RecommendationStrategy,
   limit: number = 20,
-): Promise<EventFromAPI[]> {
-  const url = `/api/recommendation/${encodeURIComponent(userId)}?strategy=${encodeURIComponent(strategy)}&limit=${limit}`
+): Promise<PublicEvent[]> {
+  const url = apiUrl(`/api/recommendation/${encodeURIComponent(userId)}?strategy=${encodeURIComponent(strategy)}&limit=${limit}`)
   const res = await fetch(url, { headers: authHeaders() })
   const data: APIRecommendationResponse = await res.json()
   if (!res.ok) {
     throw new Error(data.message || 'Failed to load recommendations')
   }
-  return data.events.map((e) => snakeToCamel(e))
+  return data.events.map((e) => apiEventFromSnake(e))
 }
 
 const VALID_STRATEGIES: RecommendationStrategy[] = ['tag', 'popularity', 'hybrid']
@@ -66,7 +42,7 @@ function coerceStrategy(raw: string): RecommendationStrategy {
 
 /** Fetch the user's saved recommendation strategy preference. */
 export async function getUserPreference(userId: string): Promise<RecommendationStrategy> {
-  const url = `/api/recommendation/preferences/${encodeURIComponent(userId)}`
+  const url = apiUrl(`/api/recommendation/preferences/${encodeURIComponent(userId)}`)
   const res = await fetch(url, { headers: authHeaders() })
   if (!res.ok) {
     throw new Error(`Failed to load preference: ${res.status} ${res.statusText}`)
@@ -80,7 +56,7 @@ export async function setUserPreference(
   userId: string,
   strategy: RecommendationStrategy,
 ): Promise<RecommendationStrategy> {
-  const url = `/api/recommendation/preferences/${encodeURIComponent(userId)}`
+  const url = apiUrl(`/api/recommendation/preferences/${encodeURIComponent(userId)}`)
   const res = await fetch(url, {
     method: 'POST',
     headers: authHeaders(),
@@ -116,7 +92,7 @@ interface APIUserTagsResponse {
 
 /** Fetch every selectable tag. */
 export async function getAllTags(): Promise<Tag[]> {
-  const res = await fetch('/api/recommendation/tags', { headers: authHeaders() })
+  const res = await fetch(apiUrl('/api/recommendation/tags'), { headers: authHeaders() })
   if (!res.ok) {
     throw new Error(`Failed to load tags: ${res.status} ${res.statusText}`)
   }
@@ -130,7 +106,7 @@ export async function getAllTags(): Promise<Tag[]> {
 
 /** Fetch the tag_ids the user is currently interested in. */
 export async function getUserTags(userId: string): Promise<string[]> {
-  const url = `/api/recommendation/user-tags/${encodeURIComponent(userId)}`
+  const url = apiUrl(`/api/recommendation/user-tags/${encodeURIComponent(userId)}`)
   const res = await fetch(url, { headers: authHeaders() })
   if (!res.ok) {
     throw new Error(`Failed to load user tags: ${res.status} ${res.statusText}`)
@@ -141,7 +117,7 @@ export async function getUserTags(userId: string): Promise<string[]> {
 
 /** Replace the user's interested-tag set with the provided list. */
 export async function setUserTags(userId: string, tagIds: string[]): Promise<string[]> {
-  const url = `/api/recommendation/user-tags/${encodeURIComponent(userId)}`
+  const url = apiUrl(`/api/recommendation/user-tags/${encodeURIComponent(userId)}`)
   const res = await fetch(url, {
     method: 'POST',
     headers: authHeaders(),

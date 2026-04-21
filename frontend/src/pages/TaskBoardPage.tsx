@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
-import { getEvent, apiEventToStored } from '../services/eventApi'
+import { getEvent, apiEventToStored } from '../services/LifecycleService'
+import { apiUrl } from '../services/Config'
 import { loadEvents } from './CreateEventPage'
 import type { StoredEvent } from '../types/event'
 import '../styles/TaskBoard.css'
@@ -14,6 +15,7 @@ interface TaskNode {
   description: string
   status: string
   assigned_to: string | null
+  assigned_to_username: string | null
   contribution: string | null
   created_by: string
   progress: number
@@ -36,10 +38,11 @@ const STATUS_LABELS: Record<string, string> = {
   unavailable: 'Unavailable',
 }
 
-function mkHeaders(userId: string, ev: StoredEvent | null): HeadersInit {
+function mkHeaders(ev: StoredEvent | null): HeadersInit {
+  const token = StorageUtil.getToken() ?? ''
   const h: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-User-Id': userId,
+    'Authorization': `Bearer ${token}`,
   }
   if (ev) {
     h['X-Event-Owner-Id'] = ev.ownerId
@@ -70,8 +73,8 @@ export default function TaskBoardPage() {
   const loadTaskTree = useCallback(async (ev: StoredEvent | null) => {
     if (!eventId) return
     try {
-      const res = await fetch(`/api/tasks/events/${eventId}`, {
-        headers: mkHeaders(userId, ev),
+      const res = await fetch(apiUrl(`/api/tasks/events/${eventId}`), {
+        headers: mkHeaders(ev),
       })
       const data = await res.json()
       if (res.ok) {
@@ -129,9 +132,9 @@ export default function TaskBoardPage() {
     if (!eventId) return
 
     try {
-      const res = await fetch(`/api/tasks/events/${eventId}`, {
+      const res = await fetch(apiUrl(`/api/tasks/events/${eventId}`), {
         method: 'POST',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
         body: JSON.stringify({ title, description, parent_id: parentId }),
       })
       const data = await res.json()
@@ -150,9 +153,9 @@ export default function TaskBoardPage() {
 
   async function handleUpdate(taskId: string, title: string, description: string) {
     try {
-      const res = await fetch(`/api/tasks/${taskId}`, {
+      const res = await fetch(apiUrl(`/api/tasks/${taskId}`), {
         method: 'PUT',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
         body: JSON.stringify({ title, description }),
       })
       const data = await res.json()
@@ -174,9 +177,9 @@ export default function TaskBoardPage() {
     if (!confirm('Delete this task and all its sub-tasks?')) return
 
     try {
-      const res = await fetch(`/api/tasks/${taskId}`, {
+      const res = await fetch(apiUrl(`/api/tasks/${taskId}`), {
         method: 'DELETE',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
       })
       const data = await res.json()
       
@@ -194,9 +197,9 @@ export default function TaskBoardPage() {
 
   async function handleClaim(taskId: string) {
     try {
-      const res = await fetch(`/api/tasks/${taskId}/claim`, {
+      const res = await fetch(apiUrl(`/api/tasks/${taskId}/claim`), {
         method: 'POST',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -210,11 +213,29 @@ export default function TaskBoardPage() {
     await loadTaskTree(event)
   }
 
+  async function handleUnclaim(taskId: string) {
+    try {
+      const res = await fetch(apiUrl(`/api/tasks/${taskId}/claim`), {
+        method: 'DELETE',
+        headers: mkHeaders(event),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.message ?? 'Failed to unclaim task')
+        return
+      }
+    } catch {
+      setError('Network error')
+      return
+    }
+    await loadTaskTree(event)
+  }
+
   async function handleContribute(taskId: string, contribution: string) {
     try {
-      const res = await fetch(`/api/tasks/${taskId}/contribute`, {
+      const res = await fetch(apiUrl(`/api/tasks/${taskId}/contribute`), {
         method: 'POST',
-        headers: mkHeaders(userId, event),
+        headers: mkHeaders(event),
         body: JSON.stringify({ contribution }),
       })
       const data = await res.json()
@@ -302,6 +323,7 @@ export default function TaskBoardPage() {
                 onEdit={(task) => setModal({ kind: 'edit', task })}
                 onDelete={handleDelete}
                 onClaim={handleClaim}
+                onUnclaim={handleUnclaim}
                 onContribute={(task) => setModal({ kind: 'contribute', task })}
               />
             ))}
@@ -351,12 +373,13 @@ interface TaskNodeProps {
   onEdit: (task: TaskNode) => void
   onDelete: (taskId: string) => void
   onClaim: (taskId: string) => void
+  onUnclaim: (taskId: string) => void
   onContribute: (task: TaskNode) => void
 }
 
 function TaskNodeItem({
   node, userId, isOwner, canEdit, canCreateTask, canClaim, canContribute,
-  onAddSub, onEdit, onDelete, onClaim, onContribute,
+  onAddSub, onEdit, onDelete, onClaim, onUnclaim, onContribute,
 }: TaskNodeProps) {
   const [expanded, setExpanded] = useState(true)
   const hasChildren = node.children.length > 0
@@ -390,7 +413,7 @@ function TaskNodeItem({
                   <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
-                {isMyClaim ? 'You' : node.assigned_to.slice(0, 8)}
+                {isMyClaim ? 'You' : (node.assigned_to_username ?? node.assigned_to.slice(0, 8))}
               </span>
             )}
           </p>
@@ -432,7 +455,7 @@ function TaskNodeItem({
             Delete
           </button>
         )}
-        {canClaim && isLeaf && node.status === 'open' && !isOwner && (
+        {canClaim && isLeaf && node.status === 'open' && (
           <button className="tb-btn tb-btn-claim" onClick={() => onClaim(node.id)}>
             Claim
           </button>
@@ -440,6 +463,11 @@ function TaskNodeItem({
         {canContribute && isMyClaim && node.status === 'claimed' && (
           <button className="tb-btn tb-btn-contribute" onClick={() => onContribute(node)}>
             Submit Contribution
+          </button>
+        )}
+        {canClaim && isLeaf && node.status === 'claimed' && (isMyClaim || isOwner) && (
+          <button className="tb-btn tb-btn-secondary" onClick={() => onUnclaim(node.id)}>
+            Cancel Claim
           </button>
         )}
       </div>
@@ -461,6 +489,7 @@ function TaskNodeItem({
               onEdit={onEdit}
               onDelete={onDelete}
               onClaim={onClaim}
+              onUnclaim={onUnclaim}
               onContribute={onContribute}
             />
           ))}

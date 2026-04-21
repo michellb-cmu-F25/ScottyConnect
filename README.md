@@ -8,8 +8,8 @@ Visit Sigrid at https://sigrid-says.com/cmusvfse
 
 ## About
 
-### [Production Link](https://project-3ht01.vercel.app/login)
-### [API Documentation](https://project-3ht01.vercel.app/docs)
+### [Production Link](https://scottyconnect-1.onrender.com/)
+### [API Documentation](https://scottyconnect.onrender.com/docs)
 
 ## Getting Started
 

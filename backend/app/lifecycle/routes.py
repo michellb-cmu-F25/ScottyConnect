@@ -2,7 +2,7 @@
 """
 Routes for the lifecycle service.
 """
-from flask import Blueprint, jsonify, g
+from flask import Blueprint, jsonify, g, request
 
 from app.lifecycle.schemas import (
     CreateEventRequest,
@@ -12,7 +12,7 @@ from app.lifecycle.schemas import (
     UpdateEventRequest,
 )
 from app.lifecycle.service import get_lifecycle_service
-from app.utils.auth import require_auth
+from app.utils.auth import require_auth, try_get_request_user_id
 from app.utils.doc import doc
 from app.utils.validate import validate
 
@@ -43,7 +43,8 @@ def create_event(req: CreateEventRequest):
     success_status=200,
 )
 def list_my_events():
-    resp = get_lifecycle_service().list_mine(g.user_id)
+    client_tz = request.args.get("client_tz")
+    resp = get_lifecycle_service().list_mine(g.user_id, client_tz=client_tz)
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 
@@ -55,7 +56,8 @@ def list_my_events():
     success_status=200,
 )
 def list_published_events():
-    resp = get_lifecycle_service().list_published()
+    client_tz = request.args.get("client_tz")
+    resp = get_lifecycle_service().list_published(client_tz=client_tz)
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 
@@ -67,7 +69,11 @@ def list_published_events():
     success_status=200,
 )
 def get_event(event_id: str):
-    resp = get_lifecycle_service().get_event(event_id)
+    requester_id = try_get_request_user_id()
+    client_tz = request.args.get("client_tz")
+    resp = get_lifecycle_service().get_event(
+        event_id, requester_id=requester_id, client_tz=client_tz
+    )
     return jsonify(resp.model_dump(mode="json")), resp.code
 
 

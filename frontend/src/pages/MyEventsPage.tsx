@@ -6,8 +6,10 @@ import {
   apiEventToStored,
   deleteEventApi,
   transitionEventApi,
-} from '../services/eventApi'
-import { loadEvents, type StoredEvent } from './CreateEventPage'
+  deleteEventTags,
+} from '../services/LifecycleService'
+import { getRegisteredEvents, unregisterEvent } from '../services/AttendanceService'
+import type { StoredEvent } from '../types/event'
 import StorageUtil from '../common/StorageUtil'
 import '../styles/MyEvents.css'
 
@@ -21,55 +23,6 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 }
 
 const FALLBACK_STATUS = { label: 'Unknown', className: 'me-status-draft' }
-
-interface Registration {
-  eventId: string
-  userId: string
-  registeredAt: string
-}
-
-const REGISTRATIONS_KEY = 'scottyConnectRegistrations'
-
-function loadRegistrations(): Registration[] {
-  try {
-    return JSON.parse(localStorage.getItem(REGISTRATIONS_KEY) || '[]')
-  } catch {
-    return []
-  }
-}
-
-function saveRegistrations(regs: Registration[]) {
-  localStorage.setItem(REGISTRATIONS_KEY, JSON.stringify(regs))
-}
-
-const MOCK_REGISTERED_EVENTS: StoredEvent[] = [
-  {
-    id: 'mock-reg-1',
-    title: 'CMU-SV Carnival',
-    description: 'Annual spring carnival at CMU Silicon Valley campus.',
-    date: '2026-04-12',
-    startTime: '17:00',
-    endTime: '21:00',
-    location: 'CMUSV',
-    capacity: 80,
-    status: 'published',
-    ownerId: 'other-user',
-    createdAt: '2026-03-20T10:00:00Z',
-  },
-  {
-    id: 'mock-reg-2',
-    title: 'ECE Happy Hour',
-    description: 'Casual social gathering for ECE students and faculty.',
-    date: '2026-04-18',
-    startTime: '14:00',
-    endTime: '16:00',
-    location: 'The Ameswell Hotel',
-    capacity: null,
-    status: 'published',
-    ownerId: 'other-user',
-    createdAt: '2026-03-25T08:00:00Z',
-  },
-]
 
 function formatDate(ev: StoredEvent): string {
   const d = new Date(ev.date + 'T00:00:00')
@@ -115,13 +68,14 @@ function getActions(ev: StoredEvent): { label: string; className: string; action
 export default function MyEventsPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('created')
-  const [, setTick] = useState(0)
-  const rerender = () => setTick((t) => t + 1)
   const [deleteTarget, setDeleteTarget] = useState<StoredEvent | null>(null)
   const [feedbackTarget, setFeedbackTarget] = useState<StoredEvent | null>(null)
   const [createdEvents, setCreatedEvents] = useState<StoredEvent[]>([])
   const [createdLoading, setCreatedLoading] = useState(true)
   const [createdError, setCreatedError] = useState('')
+  const [registeredEvents, setRegisteredEvents] = useState<StoredEvent[]>([])
+  const [registeredLoading, setRegisteredLoading] = useState(true)
+  const [registeredError, setRegisteredError] = useState('')
   const [actionError, setActionError] = useState('')
 
   const refreshCreated = useCallback(async () => {
@@ -148,11 +102,37 @@ export default function MyEventsPage() {
     refreshCreated()
   }, [refreshCreated])
 
-  const user = StorageUtil.getUser()
-  const registrations = loadRegistrations()
-  const userRegIds = new Set(registrations.filter((r) => r.userId === (user.id ?? 'anonymous')).map((r) => r.eventId))
-  const registeredEvents = MOCK_REGISTERED_EVENTS.filter(() => true)
-    .concat(loadEvents().filter((e) => userRegIds.has(e.id) && e.ownerId !== (user.id ?? 'anonymous')))
+  useEffect(() => {
+    if (!StorageUtil.getToken()) {
+      setRegisteredEvents([])
+      setRegisteredError('Sign in to see events you registered for.')
+      setRegisteredLoading(false)
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      setRegisteredLoading(true)
+      try {
+        const list = await getRegisteredEvents()
+        if (!cancelled) {
+          setRegisteredEvents(list.map(apiEventToStored))
+          setRegisteredError('')
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setRegisteredError(e instanceof Error ? e.message : 'Failed to load events')
+          setRegisteredEvents([])
+        }
+      } finally {
+        if (!cancelled) setRegisteredLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function handleAction(ev: StoredEvent, action: string) {
     if (action === 'tasks') {
@@ -169,6 +149,17 @@ export default function MyEventsPage() {
     }
     if (action === 'feedback') {
       setFeedbackTarget(ev)
+      return
+    }
+    if (action === 'rate') {
+      navigate(`/events/${ev.id}/feedback`, {
+        state: {
+          title: ev.title,
+          date: ev.date,
+          startTime: ev.startTime,
+          endTime: ev.endTime,
+        },
+      })
       return
     }
     if (action === 'end') {
@@ -192,22 +183,39 @@ export default function MyEventsPage() {
       return
     }
     if (action === 'unregister') {
-      const updated = loadRegistrations().filter((r) => !(r.eventId === ev.id && r.userId === (user.id ?? 'anonymous')))
-      saveRegistrations(updated)
+      setActionError('')
+      try {
+        await unregisterEvent(ev.id)
+        const list = await getRegisteredEvents()
+        setRegisteredEvents(list.map(apiEventToStored))
+        setRegisteredError('')
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : 'Failed to unregister')
+      }
+      return
     }
-    rerender()
   }
 
   async function confirmDelete() {
     if (!deleteTarget) return
     setActionError('')
     try {
+      // Delete event tags first (best-effort — don't block deletion if it fails)
+      try {
+        await deleteEventTags(deleteTarget.id)
+      } catch (tagErr) {
+        console.error('Failed to delete event tags:', tagErr)
+      }
       await deleteEventApi(deleteTarget.id)
       setDeleteTarget(null)
       await refreshCreated()
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Failed to delete')
     }
+  }
+
+  function openEventDetails(eventId: string) {
+    navigate(`/events/${eventId}`)
   }
 
   return (
@@ -278,7 +286,18 @@ export default function MyEventsPage() {
                   const actions = getActions(ev)
                   return (
                     <li key={ev.id}>
-                      <article className="me-event-card">
+                      <article
+                        className="me-event-card"
+                        onClick={() => openEventDetails(ev.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            openEventDetails(ev.id)
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                      >
                         <div className="me-event-top">
                           <div className="me-event-body">
                             <h3 className="me-event-title">{ev.title}</h3>
@@ -293,7 +312,10 @@ export default function MyEventsPage() {
                               <button
                                 key={a.action}
                                 className={`me-action-btn ${a.className}`}
-                                onClick={() => handleAction(ev, a.action)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  void handleAction(ev, a.action)
+                                }}
                               >
                                 {a.label}
                               </button>
@@ -311,18 +333,36 @@ export default function MyEventsPage() {
 
         {tab === 'registered' && (
           <section className="me-section" aria-label="Registered events">
-            {registeredEvents.length === 0 ? (
+            {registeredLoading && <p className="me-empty">Loading…</p>}
+            {!registeredLoading && registeredError && (
+              <div className="me-empty">
+                <p>{registeredError}</p>
+              </div>
+            )}
+            {!registeredLoading && !registeredError && registeredEvents.length === 0 && (
               <div className="me-empty">
                 <p>You haven't registered for any events yet.</p>
                 <Link to="/mainpage" className="me-empty-link">Browse active events</Link>
               </div>
-            ) : (
+            )}
+            {!registeredLoading && !registeredError && registeredEvents.length > 0 && (
               <ul className="me-event-list">
                 {registeredEvents.map((ev) => {
                   const sc = STATUS_CONFIG[ev.status] ?? FALLBACK_STATUS
                   return (
                     <li key={ev.id}>
-                      <article className="me-event-card">
+                      <article
+                        className="me-event-card"
+                        onClick={() => openEventDetails(ev.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            openEventDetails(ev.id)
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                      >
                         <div className="me-event-top">
                           <div className="me-event-body">
                             <h3 className="me-event-title">{ev.title}</h3>
@@ -335,14 +375,38 @@ export default function MyEventsPage() {
                           <div className="me-event-actions">
                             <button
                               className="me-action-btn me-action-publish"
-                              onClick={() => handleAction(ev, 'tasks')}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                void handleAction(ev, 'tasks')
+                              }}
                             >
                               Tasks
                             </button>
+                            {ev.status === 'ended' && (
+                              <button
+                                className="me-action-btn me-action-publish"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate(`/events/${ev.id}/feedback`, {
+                                    state: {
+                                      title: ev.title,
+                                      date: ev.date,
+                                      startTime: ev.startTime,
+                                      endTime: ev.endTime,
+                                    },
+                                  })
+                                }}
+                              >
+                                Rate This Event
+                              </button>
+                            )}
                             {ev.status === 'published' && (
                               <button
                                 className="me-action-btn me-action-danger"
-                                onClick={() => handleAction(ev, 'unregister')}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  void handleAction(ev, 'unregister')
+                                }}
                               >
                                 Cancel Registration
                               </button>

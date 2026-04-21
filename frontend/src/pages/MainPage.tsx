@@ -1,21 +1,27 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import StorageUtil, { type RecommendationStrategy } from '../common/StorageUtil'
-import { listPublishedEvents, listMyEvents, apiEventToStored } from '../services/eventApi'
+import {
+  listPublishedEvents,
+  listMyEvents,
+  apiEventToStored,
+  type PublicEvent,
+} from '../services/LifecycleService'
 import {
   getRecommendations,
   getUserPreference,
   setUserPreference,
-} from '../services/recommendationApi'
+} from '../services/RecommendationService'
+import { getRegisteredUsers } from '../services/AttendanceService'
 import RecommendationSettingsModal from '../components/RecommendationSettingsModal'
 import type { StoredEvent } from '../types/event'
 import '../styles/Main.css'
 import '../styles/Settings.css'
 
 const STRATEGY_OPTIONS: { value: RecommendationStrategy; label: string }[] = [
-  { value: 'tag', label: 'Tag match' },
-  { value: 'popularity', label: 'Popular' },
-  { value: 'hybrid', label: 'For you' },
+  { value: 'tag', label: 'Tag' },
+  { value: 'popularity', label: 'Popularity' },
+  { value: 'hybrid', label: 'Hybrid' },
 ]
 
 /** Convert HH:mm (24h) to h:mm AM/PM */
@@ -43,8 +49,22 @@ function formatEventDate(ev: StoredEvent): string {
 }
 
 function formatSpots(ev: StoredEvent): string {
-  if (ev.capacity) return `0 / ${ev.capacity}`
+  if (ev.status != "published") return 'Closed'
+  if (ev.registeredCount) return `${ev.registeredCount} going`
   return 'Open'
+}
+
+/**
+ * Main feed only: treat an event as past once local `date` + `endTime` has passed.
+ * If date or endTime is missing/unparseable, the event is kept (demo-safe default).
+ */
+function isMainPageEventStillActive(ev: PublicEvent): boolean {
+  const d = ev.date?.trim()
+  const t = ev.endTime?.trim()
+  if (!d || !t) return true
+  const end = new Date(`${d}T${t}`)
+  if (Number.isNaN(end.getTime())) return true
+  return end.getTime() > new Date().getTime()
 }
 
 export default function MainPage() {
@@ -52,6 +72,7 @@ export default function MainPage() {
   const isLoggedIn = !!userId && !!StorageUtil.getToken()
 
   const [events, setEvents] = useState<StoredEvent[]>([])
+  const [eventsLoading, setEventsLoading] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [myCreatedCount, setMyCreatedCount] = useState<number | null>(null)
   const [strategy, setStrategy] = useState<RecommendationStrategy>(() =>
@@ -98,15 +119,26 @@ export default function MainPage() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
+      if (!cancelled) {
+        setEventsLoading(true)
+      }
       try {
         if (isLoggedIn && userId) {
-          const list = await getRecommendations(userId, strategy, 20)
+          const list = (await getRecommendations(userId, strategy, 20)).filter(isMainPageEventStillActive)
+          await Promise.all(list.map(async (ev) => {
+            const users = await getRegisteredUsers(ev.id)
+            ev.registeredCount = users.length
+          }))
           if (!cancelled) {
             setEvents(list.map(apiEventToStored))
             setLoadError('')
           }
         } else {
-          const list = await listPublishedEvents()
+          const list = (await listPublishedEvents()).filter(isMainPageEventStillActive)
+          await Promise.all(list.map(async (ev) => {
+            const users = await getRegisteredUsers(ev.id)
+            ev.registeredCount = users.length
+          }))
           if (!cancelled) {
             setEvents(list.map(apiEventToStored))
             setLoadError('')
@@ -114,6 +146,10 @@ export default function MainPage() {
         }
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Failed to load events')
+      } finally {
+        if (!cancelled) {
+          setEventsLoading(false)
+        }
       }
     })()
     return () => {
@@ -219,23 +255,28 @@ export default function MainPage() {
             )}
           </div>
           {loadError && <p className="main-section-desc" role="alert">{loadError}</p>}
+          {eventsLoading && !loadError && (
+            <p className="main-section-desc" aria-live="polite">Loading events...</p>
+          )}
           <ul className="main-event-list">
             {events.map((ev) => (
               <li key={ev.id}>
-                <article className="main-event-card">
-                  <div className="main-event-card-body">
-                    <h3 className="main-event-title">{ev.title}</h3>
-                    <p className="main-event-meta">{formatEventDate(ev)}</p>
-                    {ev.location && <p className="main-event-meta">{ev.location}</p>}
-                  </div>
-                  <div className="main-event-card-aside">
-                    <span className="main-event-badge">{formatSpots(ev)}</span>
-                  </div>
-                </article>
+                <Link to={`/events/${ev.id}`} className="main-event-link">
+                  <article className="main-event-card">
+                    <div className="main-event-card-body">
+                      <h3 className="main-event-title">{ev.title}</h3>
+                      <p className="main-event-meta">{formatEventDate(ev)}</p>
+                      {ev.location && <p className="main-event-meta">{ev.location}</p>}
+                    </div>
+                    <div className="main-event-card-aside">
+                      <span className="main-event-badge">{formatSpots(ev)}</span>
+                    </div>
+                  </article>
+                </Link>
               </li>
             ))}
           </ul>
-          {events.length === 0 && !loadError && (
+          {events.length === 0 && !loadError && !eventsLoading && (
             <p className="main-section-desc">No published events yet.</p>
           )}
         </section>

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import '../styles/Auth.css'
 import StorageUtil from '../common/StorageUtil'
+import { apiUrl } from '../services/Config'
 export default function RegisterPage() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
@@ -33,7 +34,7 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/accounts/register', {
+      const res = await fetch(apiUrl('/api/accounts/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

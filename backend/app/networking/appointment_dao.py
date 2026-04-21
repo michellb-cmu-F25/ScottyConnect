@@ -127,20 +127,18 @@ class AppointmentDAO:
             )
             > 0
         )
-
-    # Checks if sender already has a pending invite with the receiver.
-    def has_pending_invite_between_users(self, sender_id: str, receiver_id: str) -> bool:
-        return (
-            self._col.count_documents(
-                {
-                    "sender_id": sender_id,
-                    "receiver_id": receiver_id,
-                    "status": AppointmentStatus.PENDING.value,
-                },
-                limit=1,
-            )
-            > 0
-        )
+        
+    # Checks if there is an active/upcoming interaction (Pending or Accepted) 
+    # between two users in either direction.
+    def has_active_meeting_between_users(self, user_a: str, user_b: str) -> bool:
+        query = {
+            "$or": [
+                {"sender_id": user_a, "receiver_id": user_b},
+                {"sender_id": user_b, "receiver_id": user_a}
+            ],
+            "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]}
+        }
+        return self._col.count_documents(query, limit=1) > 0
 
     # Returns all appointments where the user is either the sender or receiver.
     def find_all_by_user(self, user_id: str) -> List[Appointment]:
@@ -174,3 +172,4 @@ class AppointmentDAO:
         if oid is not None:
             payload["id"] = str(oid)
         return Appointment.model_validate(payload)
+

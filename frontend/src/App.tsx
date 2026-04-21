@@ -13,6 +13,7 @@ import TaskBoardPage from './pages/TaskBoardPage'
 import FeedbackHistoryPage from './pages/FeedbackHistoryPage'
 import FeedbackSubmissionPage from './pages/FeedbackSubmissionPage'
 import MyMeetingsPage from './pages/MyMeetingsPage'
+import EventDetailPage from './pages/EventDetailPage'
 
 function App() {
   return (
@@ -54,6 +55,14 @@ function App() {
           element={
             <ProtectedRoute>
               <MyEventsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/events/:id"
+          element={
+            <ProtectedRoute>
+              <EventDetailPage />
             </ProtectedRoute>
           }
         />

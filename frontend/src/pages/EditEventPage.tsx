@@ -1,13 +1,26 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
-import { getEvent, updateEvent, apiEventToStored } from '../services/eventApi'
-import { storedToForm, EventForm, type EventFormData, type StoredEvent } from './CreateEventPage'
+import {
+  getEvent,
+  updateEvent,
+  apiEventToStored,
+  getEventTags,
+  setEventTags,
+} from '../services/LifecycleService'
+import {
+  storedToForm,
+  EventForm,
+  type EventFormData,
+  type StoredEvent,
+  type EventSaveResult,
+} from './CreateEventPage'
 import '../styles/CreateEvent.css'
 
 export default function EditEventPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [event, setEvent] = useState<StoredEvent | null>(null)
+  const [initialTagIds, setInitialTagIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saveError, setSaveError] = useState('')
 
@@ -16,8 +29,14 @@ export default function EditEventPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const ev = await getEvent(id)
-        if (!cancelled) setEvent(apiEventToStored(ev))
+        const [ev, tagIds] = await Promise.all([
+          getEvent(id),
+          getEventTags(id).catch(() => [] as string[]),
+        ])
+        if (!cancelled) {
+          setEvent(apiEventToStored(ev))
+          setInitialTagIds(tagIds)
+        }
       } catch {
         if (!cancelled) setEvent(null)
       } finally {
@@ -47,20 +66,30 @@ export default function EditEventPage() {
     return <Navigate to="/my-events" replace />
   }
 
-  async function handleSave(form: EventFormData, status: StoredEvent['status']) {
+  async function handleSave(
+    form: EventFormData,
+    status: StoredEvent['status'],
+    tagIds: string[],
+  ): Promise<EventSaveResult> {
     const current = event
-    if (!current) return
+    if (!current) return undefined
     setSaveError('')
     try {
-      await updateEvent(current.id, form, status as 'draft' | 'published')
-      if (status === 'published') {
-        navigate('/event-published', { state: { eventId: current.id } })
-      } else {
-        navigate('/my-events')
+      const updated = await updateEvent(current.id, form, status as 'draft' | 'published')
+      // Save tags (best-effort — don't block event save if tags fail).
+      try {
+        await setEventTags(current.id, tagIds)
+      } catch (tagErr) {
+        console.error('Failed to save event tags:', tagErr)
       }
+      if (status === 'published') {
+        return { published: apiEventToStored(updated) }
+      }
+      navigate('/my-events')
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Failed to save')
     }
+    return undefined
   }
 
   return (
@@ -68,6 +97,7 @@ export default function EditEventPage() {
       {saveError && <div className="create-event-error">{saveError}</div>}
       <EventForm
         initialData={storedToForm(event)}
+        initialTagIds={initialTagIds}
         pageTitle="Edit draft event"
         pageSubtitle="Update the details below. You can save as draft or publish when ready."
         backTo="/my-events"
