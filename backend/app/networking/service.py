@@ -119,7 +119,8 @@ class NetworkingService(ICoffeeChatMediator):
                 "receiver_id": appt.receiver_id, 
                 "responder_id": responder.user_id
             })
-            self._logger.info(f"Invitation {"accepted" if accept else "declined"} by {responder.user_id} for invite {invite_id}", user_id=responder.user_id, event_id=invite_id)
+            self._logger.info(f"Invitation {'accepted' if accept else 'declined'} by {responder.user_id} for invite {invite_id}", user_id=responder.user_id, event_id=invite_id)
+
             return True
 
         return False
@@ -135,8 +136,15 @@ class NetworkingService(ICoffeeChatMediator):
 
         # Enforce cancellation policy: only future meetings
         now = datetime.now(timezone.utc)
-        if appt.scheduled_at < now:
+        
+        # Ensure scheduled_at is aware before comparison to prevent TypeError
+        test_dt = appt.scheduled_at
+        if test_dt.tzinfo is None:
+            test_dt = test_dt.replace(tzinfo=timezone.utc)
+
+        if test_dt < now:
             return False
+
 
         success = self._dao.update_status_atomically(
             invite_id, expected_status=appt.status, new_status=AppointmentStatus.CANCELLED
@@ -184,8 +192,7 @@ class NetworkingService(ICoffeeChatMediator):
             scheduled_at=scheduled_at,
             receiver_role=receiver_user.role,
         )
-        if success:
-            self._logger.info(f"Invitation initiated successfully from {sender_id} to {req.receiver_id}", user_id=sender_id, event_id=req.invite_id)
+
         code = 201 if success else 400
         return AppointmentResponse(message=reason or "Failed to initiate chat", code=code)
 
@@ -246,8 +253,8 @@ class NetworkingService(ICoffeeChatMediator):
         success = participant.cancel_chat(appointment_id)
         
         if success:
-            self._logger.info(f"Invitation cancelled by {sender_id} for invite {appointment_id}", user_id=sender_id, event_id=appointment_id)
             return AppointmentResponse(message="Invitation cancelled", code=200)
+
 
         return AppointmentResponse(message="Cancellation failed or invalid timing", code=400)
 

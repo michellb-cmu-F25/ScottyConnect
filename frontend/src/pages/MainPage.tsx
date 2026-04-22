@@ -5,6 +5,7 @@ import {
   listPublishedEvents,
   listMyEvents,
   apiEventToStored,
+  getEventTags,
   type PublicEvent,
 } from '../services/LifecycleService'
 import {
@@ -14,6 +15,7 @@ import {
 } from '../services/RecommendationService'
 import { getRegisteredUsers } from '../services/AttendanceService'
 import RecommendationSettingsModal from '../components/RecommendationSettingsModal'
+import EventTagDisplay from '../components/EventTagDisplay'
 import type { StoredEvent } from '../types/event'
 import '../styles/Main.css'
 import '../styles/Settings.css'
@@ -80,6 +82,7 @@ export default function MainPage() {
   )
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [refreshNonce, setRefreshNonce] = useState(0)
+  const [tagsByEventId, setTagsByEventId] = useState<Record<string, string[]>>({})
 
   function handleStrategyChange(next: RecommendationStrategy) {
     setStrategy(next)
@@ -156,6 +159,31 @@ export default function MainPage() {
       cancelled = true
     }
   }, [isLoggedIn, userId, strategy, refreshNonce])
+
+  // Fetch event tags for all displayed events, in parallel.
+  useEffect(() => {
+    if (events.length === 0) {
+      setTagsByEventId({})
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const results = await Promise.all(
+        events.map((ev) =>
+          getEventTags(ev.id)
+            .then((ids) => [ev.id, ids] as [string, string[]])
+            .catch(() => [ev.id, [] as string[]] as [string, string[]]),
+        ),
+      )
+      if (cancelled) return
+      const map: Record<string, string[]> = {}
+      for (const [id, ids] of results) map[id] = ids
+      setTagsByEventId(map)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [events])
 
   useEffect(() => {
     if (!StorageUtil.getToken()) {
@@ -267,6 +295,9 @@ export default function MainPage() {
                       <h3 className="main-event-title">{ev.title}</h3>
                       <p className="main-event-meta">{formatEventDate(ev)}</p>
                       {ev.location && <p className="main-event-meta">{ev.location}</p>}
+                      {tagsByEventId[ev.id] && tagsByEventId[ev.id].length > 0 && (
+                        <EventTagDisplay tagIds={tagsByEventId[ev.id]} limit={3} />
+                      )}
                     </div>
                     <div className="main-event-card-aside">
                       <span className="main-event-badge">{formatSpots(ev)}</span>

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import StorageUtil from '../common/StorageUtil'
 import { authHeaders } from '../utils/networkingUtils'
+import { apiUrl } from '../services/Config'
 import type { Appointment, UserProfile } from '../utils/networkingUtils'
 
 export function useNetworking() {
@@ -23,14 +24,15 @@ export function useNetworking() {
     setError(null)
     try {
       const fetchers = [
-        fetch(`/api/networking/appointments/${user.id}`, { headers: authHeaders() })
+        fetch(apiUrl(`/api/networking/appointments/${user.id}`), { headers: authHeaders() })
       ]
+
       if (includeDiscover) {
-        fetchers.push(fetch('/api/accounts/discover'))
+        fetchers.push(fetch(apiUrl('/api/accounts/discover')))
       }
 
       const results = await Promise.all(fetchers)
-      
+
       // Handle Appointments
       const apptData = await results[0].json()
       const returnedAppts = apptData.appointments || []
@@ -44,7 +46,7 @@ export function useNetworking() {
         const filtered = allUsers.filter(u => u.id !== user.id)
         setDiscoverUsers(filtered)
         sessionStorage.setItem('scotty_networking_discover', JSON.stringify(filtered))
-        
+
         // Return profile for the current user if found (for profile editor)
         const me = allUsers.find(u => u.username === user.username)
         return { me, appointments: returnedAppts }
