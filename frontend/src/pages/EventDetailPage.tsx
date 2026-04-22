@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
 import { apiUrl } from '../services/Config'
 import { getEvent, apiEventToStored, getEventTags } from '../services/LifecycleService'
@@ -12,6 +12,25 @@ import {
 import EventTagDisplay from '../components/EventTagDisplay'
 import type { StoredEvent } from '../types/event'
 import '../styles/EventDetail.css'
+import { authHeaders } from '../services/ServiceUtils'
+
+interface TaskPreview {
+  id: string
+  parent_id: string | null
+  title: string
+  children: TaskPreview[]
+}
+
+function flattenTasks(nodes: TaskPreview[], depth = 0): { task: TaskPreview; depth: number }[] {
+  const result: { task: TaskPreview; depth: number }[] = []
+  for (const node of nodes) {
+    result.push({ task: node, depth })
+    if (node.children?.length) {
+      result.push(...flattenTasks(node.children, depth + 1))
+    }
+  }
+  return result
+}
 
 // Labels for the event status
 const STATUS_LABELS: Record<StoredEvent['status'], string> = {
@@ -61,6 +80,11 @@ function formatCapacity(ev: StoredEvent): string {
 export default function EventDetailPage() {
   // Get the event ID from the URL
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+
+  // Current user
+  const currentUser = StorageUtil.getUser()
+  const currentUserId = currentUser?.id ?? ''
   
   // State variables
   const [event, setEvent] = useState<StoredEvent | null>(null)
@@ -73,6 +97,8 @@ export default function EventDetailPage() {
   const [registerSuccessMessage, setRegisterSuccessMessage] = useState('')
   const [hostLabel, setHostLabel] = useState('')
   const [tagIds, setTagIds] = useState<string[]>([])
+  const [tasks, setTasks] = useState<TaskPreview[]>([])
+  const [tasksLoading, setTasksLoading] = useState(true)
 
   // Load event details on mount
   useEffect(() => {
@@ -195,6 +221,46 @@ export default function EventDetailPage() {
       cancelled = true
     }
   }, [id])
+
+  // Determine if the current user is the event owner or a registered participant
+  const isOwner = event !== null && event.ownerId === currentUserId
+  const canViewTasks = isOwner || isRegistered
+
+  // Load task list when the user has access
+  useEffect(() => {
+    if (!id || !event) return
+    
+    if (!isOwner && registrationLoading) return
+    if (!canViewTasks) {
+      setTasksLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setTasksLoading(true)
+    ;(async () => {
+      try {
+        const headers: Record<string, string> = {
+          ...authHeaders(),
+          'X-Event-Owner-Id': event.ownerId,
+          'X-Event-Status': event.status,
+        }
+        const res = await fetch(apiUrl(`/api/tasks/events/${encodeURIComponent(id)}`), { headers })
+        const data = await res.json()
+        if (!cancelled) {
+          setTasks(res.ok ? (data.tasks ?? []) : [])
+        }
+      } catch {
+        if (!cancelled) setTasks([])
+      } finally {
+        if (!cancelled) setTasksLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [id, event, isOwner, canViewTasks, registrationLoading])
 
   // Handles the registration click event
   async function handleRegistrationClick() {
@@ -348,6 +414,60 @@ export default function EventDetailPage() {
                   </div>
                 </div>
               </div>
+            </section>
+
+            <section className="event-detail-tasks-section">
+              <div className="event-detail-tasks-header">
+                <h2 className="event-detail-section-title">Tasks</h2>
+                {canViewTasks && (
+                  <button
+                    type="button"
+                    className="event-detail-tasks-view-btn"
+                    onClick={() => navigate(`/events/${id}/tasks`)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+                      <rect x="9" y="3" width="6" height="4" rx="1" />
+                      <path d="M9 12h6M9 16h4" />
+                    </svg>
+                    View Task Board
+                  </button>
+                )}
+              </div>
+
+              {!canViewTasks && !registrationLoading && (
+                <div className="event-detail-tasks-locked">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                    <path d="M8 11V7a4 4 0 1 1 8 0v4" />
+                    <circle cx="12" cy="16" r="1.25" fill="currentColor" stroke="none" />
+                  </svg>
+                  <p>Task details are only visible to registered participants and organizers.</p>
+                </div>
+              )}
+
+              {canViewTasks && tasksLoading && (
+                <p className="event-detail-muted">Loading tasks...</p>
+              )}
+
+              {canViewTasks && !tasksLoading && tasks.length === 0 && (
+                <p className="event-detail-muted">No tasks have been added to this event yet.</p>
+              )}
+
+              {canViewTasks && !tasksLoading && tasks.length > 0 && (
+                <ul className="event-detail-tasks-list" aria-label="Event tasks">
+                  {flattenTasks(tasks).map(({ task, depth }) => (
+                    <li
+                      key={task.id}
+                      className="event-detail-task-item"
+                      style={{ '--task-depth': depth } as React.CSSProperties}
+                    >
+                      <span className="event-detail-task-bullet" aria-hidden />
+                      <span className="event-detail-task-title">{task.title}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           </article>
         )}
