@@ -5,7 +5,7 @@ Flow:
   1. Fetch the user's tag_ids via UserProfileDAO.
   2. Find all events sharing at least one of those tags via EventTagDAO.
   3. Score each event by the number of overlapping tags (higher = better match).
-  4. Return top `limit` event_ids sorted by descending score.
+  4. Return all matching event_ids sorted by descending score.
 """
 
 from app.recommendation.dao.event_tag_dao import EventTagDAO
@@ -22,11 +22,11 @@ class TagBasedRecommendationStrategy(RecommendationStrategy):
         self._user_profile_dao = user_profile_dao
         self._event_tag_dao = event_tag_dao
 
-    def recommend(self, user_id: str, limit: int = 20) -> list[str]:
+    def recommend(self, user_id: str) -> list[str]:
         tag_ids = self._user_profile_dao.get_user_tags(user_id)
         if not tag_ids:
             return []
 
         scored: dict[str, int] = self._event_tag_dao.find_event_ids_by_tags(tag_ids)
         sorted_ids = sorted(scored, key=lambda eid: scored[eid], reverse=True)
-        return sorted_ids[:limit]
+        return sorted_ids

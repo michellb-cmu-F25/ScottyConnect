@@ -127,7 +127,7 @@ export default function MainPage() {
       }
       try {
         if (isLoggedIn && userId) {
-          const list = (await getRecommendations(userId, strategy, 20)).filter(isMainPageEventStillActive)
+          const list = (await getRecommendations(userId, strategy)).filter(isMainPageEventStillActive)
           await Promise.all(list.map(async (ev) => {
             const users = await getRegisteredUsers(ev.id)
             ev.registeredCount = users.length

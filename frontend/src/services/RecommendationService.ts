@@ -21,9 +21,8 @@ interface APIPreferenceResponse {
 export async function getRecommendations(
   userId: string,
   strategy: RecommendationStrategy,
-  limit: number = 20,
 ): Promise<PublicEvent[]> {
-  const url = apiUrl(`/api/recommendation/${encodeURIComponent(userId)}?strategy=${encodeURIComponent(strategy)}&limit=${limit}`)
+  const url = apiUrl(`/api/recommendation/${encodeURIComponent(userId)}?strategy=${encodeURIComponent(strategy)}`)
   const res = await fetch(url, { headers: authHeaders() })
   const data: APIRecommendationResponse = await res.json()
   if (!res.ok) {

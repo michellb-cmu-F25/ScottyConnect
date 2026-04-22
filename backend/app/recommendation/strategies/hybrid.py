@@ -31,7 +31,7 @@ class HybridRecommendationStrategy(RecommendationStrategy):
         self._event_tag_dao = event_tag_dao
         self._attendance_signal_dao = attendance_signal_dao
 
-    def recommend(self, user_id: str, limit: int = 20) -> list[str]:
+    def recommend(self, user_id: str) -> list[str]:
         tag_ids = self._user_profile_dao.get_user_tags(user_id)
         tag_scores: dict[str, int] = (
             self._event_tag_dao.find_event_ids_by_tags(tag_ids) if tag_ids else {}
@@ -54,7 +54,7 @@ class HybridRecommendationStrategy(RecommendationStrategy):
         }
 
         sorted_ids = sorted(combined, key=lambda eid: combined[eid], reverse=True)
-        return sorted_ids[:limit]
+        return sorted_ids
 
     @staticmethod
     def _normalize(scores: dict[str, int]) -> dict[str, float]:

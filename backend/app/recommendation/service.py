@@ -57,7 +57,7 @@ class RecommendationService:
         )
 
     def get_recommendation(
-        self, user_id: str, strategy: str, limit: int = 20
+        self, user_id: str, strategy: str
     ) -> RecommendationResponse:
         try:
             strategy_obj = self._factory.create_strategy(strategy)
@@ -66,7 +66,7 @@ class RecommendationService:
                 message=str(e), strategy=strategy, events=[], code=400
             )
 
-        ranked_ids = strategy_obj.recommend(user_id, limit=limit)
+        ranked_ids = strategy_obj.recommend(user_id)
         ranked_events = self._event_signal_dao.get_published_events_by_ids(ranked_ids)
 
         all_published = self._event_signal_dao.get_all_published_events()
@@ -77,7 +77,7 @@ class RecommendationService:
         return RecommendationResponse(
             message="Success",
             strategy=strategy,
-            events=combined[:limit],
+            events=combined,
             code=200,
         )
 

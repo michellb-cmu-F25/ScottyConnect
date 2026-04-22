@@ -5,6 +5,6 @@ from abc import ABC, abstractmethod
 
 class RecommendationStrategy(ABC):
     @abstractmethod
-    def recommend(self, user_id: str, limit: int = 20) -> list[str]:
+    def recommend(self, user_id: str) -> list[str]:
         """Return an ordered list of recommended event_ids for the given user."""
         ...
