@@ -7,10 +7,12 @@ import {
   deleteEventApi,
   transitionEventApi,
   deleteEventTags,
+  getEventTags,
 } from '../services/LifecycleService'
 import { getRegisteredEvents, unregisterEvent } from '../services/AttendanceService'
 import type { StoredEvent } from '../types/event'
 import StorageUtil from '../common/StorageUtil'
+import EventTagDisplay from '../components/EventTagDisplay'
 import '../styles/MyEvents.css'
 
 type Tab = 'created' | 'registered'
@@ -77,6 +79,7 @@ export default function MyEventsPage() {
   const [registeredLoading, setRegisteredLoading] = useState(true)
   const [registeredError, setRegisteredError] = useState('')
   const [actionError, setActionError] = useState('')
+  const [tagsByEventId, setTagsByEventId] = useState<Record<string, string[]>>({})
 
   const refreshCreated = useCallback(async () => {
     if (!StorageUtil.getToken()) {
@@ -133,6 +136,32 @@ export default function MyEventsPage() {
       cancelled = true
     }
   }, [])
+
+  // Fetch event tags for all displayed events (created + registered), in parallel.
+  useEffect(() => {
+    const allEvents = [...createdEvents, ...registeredEvents]
+    if (allEvents.length === 0) {
+      setTagsByEventId({})
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const results = await Promise.all(
+        allEvents.map((ev) =>
+          getEventTags(ev.id)
+            .then((ids) => [ev.id, ids] as [string, string[]])
+            .catch(() => [ev.id, [] as string[]] as [string, string[]]),
+        ),
+      )
+      if (cancelled) return
+      const map: Record<string, string[]> = {}
+      for (const [id, ids] of results) map[id] = ids
+      setTagsByEventId(map)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [createdEvents, registeredEvents])
 
   async function handleAction(ev: StoredEvent, action: string) {
     if (action === 'tasks') {
@@ -303,6 +332,9 @@ export default function MyEventsPage() {
                             <h3 className="me-event-title">{ev.title}</h3>
                             <p className="me-event-meta">{formatDate(ev)}</p>
                             {ev.location && <p className="me-event-meta">{ev.location}</p>}
+                            {tagsByEventId[ev.id] && tagsByEventId[ev.id].length > 0 && (
+                              <EventTagDisplay tagIds={tagsByEventId[ev.id]} limit={3} />
+                            )}
                           </div>
                           <span className={`me-status-badge ${sc.className}`}>{sc.label}</span>
                         </div>
@@ -368,6 +400,9 @@ export default function MyEventsPage() {
                             <h3 className="me-event-title">{ev.title}</h3>
                             <p className="me-event-meta">{formatDate(ev)}</p>
                             {ev.location && <p className="me-event-meta">{ev.location}</p>}
+                            {tagsByEventId[ev.id] && tagsByEventId[ev.id].length > 0 && (
+                              <EventTagDisplay tagIds={tagsByEventId[ev.id]} limit={3} />
+                            )}
                           </div>
                           <span className={`me-status-badge ${sc.className}`}>{sc.label}</span>
                         </div>

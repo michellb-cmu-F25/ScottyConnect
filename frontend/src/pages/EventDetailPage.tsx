@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
 import { apiUrl } from '../services/Config'
-import { getEvent, apiEventToStored } from '../services/LifecycleService'
+import { getEvent, apiEventToStored, getEventTags } from '../services/LifecycleService'
 import {
   getRegistrationStatus,
   registerEvent,
   unregisterEvent,
   getRegisteredUsers,
 } from '../services/AttendanceService'
+import EventTagDisplay from '../components/EventTagDisplay'
 import type { StoredEvent } from '../types/event'
 import '../styles/EventDetail.css'
 
@@ -71,6 +72,7 @@ export default function EventDetailPage() {
   const [registrationSaving, setRegistrationSaving] = useState(false)
   const [registerSuccessMessage, setRegisterSuccessMessage] = useState('')
   const [hostLabel, setHostLabel] = useState('')
+  const [tagIds, setTagIds] = useState<string[]>([])
 
   // Load event details on mount
   useEffect(() => {
@@ -173,6 +175,26 @@ export default function EventDetailPage() {
       cancelled = true
     }
   }, [event])
+
+  // Load event tags on mount
+  useEffect(() => {
+    if (!id) {
+      setTagIds([])
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const ids = await getEventTags(id)
+        if (!cancelled) setTagIds(ids)
+      } catch {
+        if (!cancelled) setTagIds([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [id])
 
   // Handles the registration click event
   async function handleRegistrationClick() {
@@ -281,6 +303,14 @@ export default function EventDetailPage() {
                 <dt>Registration Status</dt>
                 <dd>{formatCapacity(event)}</dd>
               </div>
+              {tagIds.length > 0 && (
+                <div className="event-detail-item">
+                  <dt>Tags</dt>
+                  <dd>
+                    <EventTagDisplay tagIds={tagIds} limit={tagIds.length} />
+                  </dd>
+                </div>
+              )}
             </dl>
           </article>
         )}
