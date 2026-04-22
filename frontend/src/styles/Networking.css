@@ -103,6 +103,14 @@
   border-color: var(--carnegie-red);
 }
 
+.tag-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  min-height: 24px;
+}
+
 /* Discover — list + filters */
 .discover-section h2 {
   font-family: inherit;

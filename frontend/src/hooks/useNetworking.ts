@@ -43,9 +43,8 @@ export function useNetworking() {
       if (includeDiscover && results[1]) {
         const discoverData = await results[1].json()
         const allUsers: UserProfile[] = discoverData.users || []
-        const filtered = allUsers.filter(u => u.id !== user.id)
-        setDiscoverUsers(filtered)
-        sessionStorage.setItem('scotty_networking_discover', JSON.stringify(filtered))
+        setDiscoverUsers(allUsers)
+        sessionStorage.setItem('scotty_networking_discover', JSON.stringify(allUsers))
 
         // Return profile for the current user if found (for profile editor)
         const me = allUsers.find(u => u.username === user.username)

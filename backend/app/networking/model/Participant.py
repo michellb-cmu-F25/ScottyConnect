@@ -20,7 +20,7 @@ class ICoffeeChatMediator(Protocol):
         receiver_role: str,
     ) -> Tuple[bool, Optional[str]]:
         ...
-    def finalize_invite_response(self, responder: 'Participant', invite_id: str, accept: bool) -> bool:
+    def finalize_invite_response(self, responder: 'Participant', invite_id: str, accept: bool) -> Tuple[bool, Optional[str]]:
         ...
     def validate_availability(self, user_id: str, scheduled_at: datetime) -> bool:
         ...
@@ -52,16 +52,16 @@ class Participant(BaseModel, ABC):
         return False, "Mediator not configured"
 
     # Delegate invitation acceptance to the mediator.
-    def accept_chat(self, invite_id: str) -> bool:
+    def accept_chat(self, invite_id: str) -> Tuple[bool, Optional[str]]:
         if self._mediator:
             return self._mediator.finalize_invite_response(self, invite_id, accept=True)
-        return False
+        return False, "Mediator not configured"
 
     # Delegate invitation declination to the mediator.
-    def decline_chat(self, invite_id: str) -> bool:
+    def decline_chat(self, invite_id: str) -> Tuple[bool, Optional[str]]:
         if self._mediator:
             return self._mediator.finalize_invite_response(self, invite_id, accept=False)
-        return False
+        return False, "Mediator not configured"
 
     # Delegate invitation cancellation to the mediator.
     def cancel_chat(self, invite_id: str) -> bool:

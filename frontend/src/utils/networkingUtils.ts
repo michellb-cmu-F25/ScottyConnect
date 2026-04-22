@@ -117,19 +117,31 @@ export function buildScheduledAt(dateString: string, time: string): string {
 }
 
 /**
- * Formats a backend scheduled_at string into a consistent display label.
+ * Formats a backend scheduled_at string (UTC) into a consistent LA/PT display label.
  */
 export function formatScheduledAt(scheduledAt: string): string {
   try {
+    // If it's a simple string like "2024-05-01 14:30", make sure it's valid ISO
     const normalized = scheduledAt.trim().replace(' ', 'T')
-    const isoPrefix = normalized.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
-    if (!isoPrefix) return scheduledAt
+    const date = new Date(normalized)
+    
+    if (isNaN(date.getTime())) return scheduledAt
 
-    const [, year, month, day, hh, mm] = isoPrefix
-    const hour24 = Number(hh)
-    const hour12 = hour24 % 12 || 12
-    const ampm = hour24 >= 12 ? 'PM' : 'AM'
-    return `${year}-${month}-${day} ${hour12}:${mm} ${ampm}`
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+
+    const parts = formatter.formatToParts(date)
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value || ''
+
+    // Format: YYYY-MM-DD h:mm AM/PM PT
+    return `${getPart('year')}-${getPart('month')}-${getPart('day')} ${getPart('hour')}:${getPart('minute')} ${getPart('dayPeriod')} PT`
   } catch {
     return scheduledAt
   }

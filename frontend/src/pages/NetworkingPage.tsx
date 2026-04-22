@@ -54,17 +54,25 @@ export default function NetworkingPage() {
 
   const uniqueTags = useMemo(() => {
     const tags = new Set<string>()
+    // Add tags from all users
     discoverUsers.forEach(u => {
       (u.tags || []).forEach(t => {
         const s = t.trim()
         if (s) tags.add(s)
       })
     })
+    // Also include what the user is currently typing for a live feel
+    tagsInput.split(',').forEach(t => {
+      const s = t.trim()
+      if (s) tags.add(s)
+    })
     return Array.from(tags).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
-  }, [discoverUsers])
+  }, [discoverUsers, tagsInput])
 
   const filteredDiscoverUsers = useMemo(() => {
+    const me = StorageUtil.getUser()
     return discoverUsers
+      .filter(u => u.id !== me?.id) // Filter out self from discovery list
       .filter(u => {
         if (discoverRoleFilter && u.role?.trim().toUpperCase() !== discoverRoleFilter.toUpperCase()) return false
         if (discoverTagFilter) {
@@ -209,6 +217,11 @@ export default function NetworkingPage() {
           <div className="profile-form-group">
             <label>Interest Tags (comma separated)</label>
             <textarea value={tagsInput} onChange={e => setTagsInput(e.target.value)} rows={3} placeholder="e.g. AI, Product Management, Startup" />
+            <div className="tag-preview">
+              {tagsInput.split(',').map(t => t.trim()).filter(t => t).map(t => (
+                <span key={t} className="tag-badge">{t}</span>
+              ))}
+            </div>
             <button className="book-btn" onClick={handleUpdateProfile} style={{ marginTop: '12px' }}>Update Profile</button>
           </div>
         </div>

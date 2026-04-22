@@ -95,12 +95,27 @@ class NetworkingService(ICoffeeChatMediator):
             
         return False, "Failed to save invitation"
 
-    def finalize_invite_response(self, responder: Participant, invite_id: str, accept: bool) -> bool:
+    def finalize_invite_response(self, responder: Participant, invite_id: str, accept: bool) -> Tuple[bool, Optional[str]]:
         """
         Updates invitation status and emits corresponding events.
+        Enforces availability checks before transition to ACCEPTED.
         """
+        if accept:
+            appt = self._dao.find_by_id(invite_id)
+            if not appt:
+                return False, "Invitation not found"
+            
+            # 1. Availability validation (only for Acceptance)
+            if not self.validate_availability(appt.sender_id, appt.scheduled_at):
+                self._logger.warning(f"Acceptance blocked: Sender {appt.sender_id} is already booked", user_id=responder.user_id, event_id=invite_id)
+                return False, "The meeting host is already booked at this time"
+            
+            if not self.validate_availability(appt.receiver_id, appt.scheduled_at):
+                self._logger.warning(f"Acceptance blocked: Receiver {appt.receiver_id} is already booked", user_id=responder.user_id, event_id=invite_id)
+                return False, "You are already booked at this time. Please cancel your other meeting first."
+
+        # 2. Persist the state transition
         status = AppointmentStatus.ACCEPTED if accept else AppointmentStatus.DECLINED
-        
         updated = self._dao.update_status_atomically(
             invite_id,
             expected_status=AppointmentStatus.PENDING,
@@ -110,7 +125,7 @@ class NetworkingService(ICoffeeChatMediator):
         if updated:
             appt = self._dao.find_by_id(invite_id)
             if not appt:
-                return False 
+                return False, "Failed to retrieve updated invitation"
               
             msg_type = MessageType.COFFEE_CHAT_ACCEPTED if accept else MessageType.COFFEE_CHAT_DECLINED
             self.publishMessage(msg_type, {
@@ -121,9 +136,9 @@ class NetworkingService(ICoffeeChatMediator):
             })
             self._logger.info(f"Invitation {'accepted' if accept else 'declined'} by {responder.user_id} for invite {invite_id}", user_id=responder.user_id, event_id=invite_id)
 
-            return True
+            return True, f"Invitation {status.value.lower()} successfully"
 
-        return False
+        return False, "Failed to update invitation status (it may have been cancelled or already processed)"
 
 
     def dispatch_cancellation(self, canceller: Participant, invite_id: str) -> bool:
@@ -218,13 +233,10 @@ class NetworkingService(ICoffeeChatMediator):
         )
         participant.set_mediator(self)
         
-        success = participant.accept_chat(req.invite_id) if req.accept else participant.decline_chat(req.invite_id)
+        success, reason = participant.accept_chat(req.invite_id) if req.accept else participant.decline_chat(req.invite_id)
         
-        if success:
-            res_str = "accepted" if req.accept else "declined"
-            return AppointmentResponse(message=f"Invitation {res_str} successfully", code=200)
-
-        return AppointmentResponse(message="Failed to process response", code=400)
+        code = 200 if success else 400
+        return AppointmentResponse(message=reason or "Failed to process response", code=code)
 
     def cancel_invite(self, appointment_id: str, sender_id: str) -> AppointmentResponse:
         """Allows participants to cancel an active appointment."""
