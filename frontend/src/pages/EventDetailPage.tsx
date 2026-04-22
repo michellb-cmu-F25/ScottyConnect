@@ -260,58 +260,95 @@ export default function EventDetailPage() {
         )}
 
         {!loading && !loadError && event && (
-          <article className="event-detail-card">
-            <div className="event-detail-top">
-              <h1 className="event-detail-title">{event.title}</h1>
-              <span className={`event-detail-status event-detail-status-${event.status}`}>
-                {STATUS_LABELS[event.status]}
-              </span>
-            </div>
+          <article className="event-detail-shell">
+            <section className="event-detail-hero">
+              <div className="event-detail-hero-main">
+                <div className="event-detail-hero-copy">
+                  <h1 className="event-detail-title">{event.title}</h1>
 
-            <div className="event-detail-actions">
-              <button
-                type="button"
-                className={`event-detail-register-btn ${
-                  isRegistered && isPublished ? 'unregister' : ''
-                }`}
-                disabled={isRegistrationButtonDisabled}
-                onClick={handleRegistrationClick}
-              >
-                {registrationSaving ? 'Saving...' : registrationButtonLabel}
-              </button>
-            </div>
+                  <div className="event-detail-hero-highlights" aria-label="Event summary">
+                    <div className="event-detail-highlight">
+                      <span className="event-detail-highlight-icon" aria-hidden>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                          <rect x="3" y="5" width="18" height="16" rx="2" />
+                          <path d="M16 3v4M8 3v4M3 10h18" />
+                        </svg>
+                      </span>
+                      <div className="event-detail-highlight-text">
+                        <div className="event-detail-highlight-label">When</div>
+                        <div className="event-detail-highlight-value">{formatDateTime(event)}</div>
+                      </div>
+                    </div>
 
-            {registerSuccessMessage && <div className="event-detail-success-message">{registerSuccessMessage}</div>}
-            {registrationError && <p className="event-detail-inline-error">{registrationError}</p>}
+                    <div className="event-detail-highlight">
+                      <span className="event-detail-highlight-icon" aria-hidden>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                          <path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z" />
+                          <circle cx="12" cy="10" r="2.5" />
+                        </svg>
+                      </span>
+                      <div className="event-detail-highlight-text">
+                        <div className="event-detail-highlight-label">Where</div>
+                        <div className="event-detail-highlight-value">{event.location || 'TBA'}</div>
+                      </div>
+                    </div>
+                  </div>
 
-            <p className="event-detail-description">{event.description}</p>
-
-            <dl className="event-detail-grid">
-              <div className="event-detail-item">
-                <dt>Hosted by</dt>
-                <dd>{hostLabel || '—'}</dd>
-              </div>
-              <div className="event-detail-item">
-                <dt>Date and time</dt>
-                <dd>{formatDateTime(event)}</dd>
-              </div>
-              <div className="event-detail-item">
-                <dt>Location</dt>
-                <dd>{event.location || 'TBA'}</dd>
-              </div>
-              <div className="event-detail-item">
-                <dt>Registration Status</dt>
-                <dd>{formatCapacity(event)}</dd>
-              </div>
-              {tagIds.length > 0 && (
-                <div className="event-detail-item">
-                  <dt>Tags</dt>
-                  <dd>
-                    <EventTagDisplay tagIds={tagIds} limit={tagIds.length} />
-                  </dd>
+                  {tagIds.length > 0 && (
+                    <div className="event-detail-hero-tags" aria-label="Tags">
+                      <EventTagDisplay tagIds={tagIds} limit={tagIds.length} />
+                    </div>
+                  )}
                 </div>
-              )}
-            </dl>
+
+                <aside className="event-detail-hero-action" aria-label="RSVP">
+                  <span className={`event-detail-status event-detail-status-${event.status}`}>
+                    {STATUS_LABELS[event.status]}
+                  </span>
+                  <div className="event-detail-actions">
+                    <button
+                      type="button"
+                      className={`event-detail-register-btn ${
+                        isRegistered && isPublished ? 'unregister' : ''
+                      }`}
+                      disabled={isRegistrationButtonDisabled}
+                      onClick={handleRegistrationClick}
+                    >
+                      {registrationSaving ? 'Saving...' : registrationButtonLabel}
+                    </button>
+                  </div>
+
+                  <div className="event-detail-capacity" aria-label="Registration status">
+                    {formatCapacity(event)}
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            {(registerSuccessMessage || registrationError) && (
+              <div className="event-detail-feedback" aria-live="polite">
+                {registerSuccessMessage && (
+                  <div className="event-detail-success-message">{registerSuccessMessage}</div>
+                )}
+                {registrationError && <p className="event-detail-inline-error">{registrationError}</p>}
+              </div>
+            )}
+
+            <section className="event-detail-body">
+              <div className="event-detail-body-main">
+                <h2 className="event-detail-section-title">About</h2>
+                <p className="event-detail-description">{event.description}</p>
+              </div>
+
+              <div className="event-detail-body-side">
+                <h2 className="event-detail-section-title">Organizer</h2>
+                <div className="event-detail-details">
+                  <div className="event-detail-detail-row event-detail-organizer-row">
+                    {hostLabel || '—'}
+                  </div>
+                </div>
+              </div>
+            </section>
           </article>
         )}
       </main>

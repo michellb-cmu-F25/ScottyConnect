@@ -238,84 +238,10 @@ export default function MainPage() {
 
       <main className="main-content">
 
-        <section className="main-section" aria-labelledby="events-heading">
-          <div className="main-section-head">
-            <h2 id="events-heading" className="main-section-title">
-              {isLoggedIn ? 'Recommended for you' : 'Active events'}
-            </h2>
-            <p className="main-section-desc">
-              {isLoggedIn
-                ? 'Published events ranked by your selected strategy'
-                : 'Open registrations and upcoming sessions'}
-            </p>
-            {isLoggedIn && (
-              <div className="main-strategy-row">
-                <div
-                  className="main-strategy-selector"
-                  role="radiogroup"
-                  aria-label="Recommendation strategy"
-                >
-                  {STRATEGY_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={strategy === opt.value}
-                      className={`main-strategy-option${
-                        strategy === opt.value ? ' is-active' : ''
-                      }`}
-                      onClick={() => handleStrategyChange(opt.value)}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                {strategy === 'tag' && (
-                  <button
-                    type="button"
-                    className="main-strategy-edit-btn"
-                    onClick={() => setSettingsOpen(true)}
-                  >
-                    View / set tag preferences
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-          {loadError && <p className="main-section-desc" role="alert">{loadError}</p>}
-          {eventsLoading && !loadError && (
-            <p className="main-section-desc" aria-live="polite">Loading events...</p>
-          )}
-          <ul className="main-event-list">
-            {events.map((ev) => (
-              <li key={ev.id}>
-                <Link to={`/events/${ev.id}`} className="main-event-link">
-                  <article className="main-event-card">
-                    <div className="main-event-card-body">
-                      <h3 className="main-event-title">{ev.title}</h3>
-                      <p className="main-event-meta">{formatEventDate(ev)}</p>
-                      {ev.location && <p className="main-event-meta">{ev.location}</p>}
-                      {tagsByEventId[ev.id] && tagsByEventId[ev.id].length > 0 && (
-                        <EventTagDisplay tagIds={tagsByEventId[ev.id]} limit={3} />
-                      )}
-                    </div>
-                    <div className="main-event-card-aside">
-                      <span className="main-event-badge">{formatSpots(ev)}</span>
-                    </div>
-                  </article>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          {events.length === 0 && !loadError && !eventsLoading && (
-            <p className="main-section-desc">No published events yet.</p>
-          )}
-        </section>
-
         <section className="main-section" aria-labelledby="actions-heading">
           <div className="main-section-head">
             <h2 id="actions-heading" className="main-section-title">
-              Quick actions
+              Quick Actions
             </h2>
             <p className="main-section-desc">Shortcuts for networking, feedback, publishing, and attendance</p>
           </div>
@@ -370,6 +296,92 @@ export default function MainPage() {
               </Link>
             </li>
           </ul>
+        </section>
+
+        <section className="main-section" aria-labelledby="events-heading">
+          <div className="main-section-head">
+            <h2 id="events-heading" className="main-section-title">
+              {isLoggedIn ? 'Events Recommended for You' : 'Active events'}
+            </h2>
+            <p className="main-section-desc">
+              {isLoggedIn
+                ? 'Published events ranked by your selected strategy'
+                : 'Open registrations and upcoming sessions'}
+            </p>
+            {isLoggedIn && (
+              <div className="main-strategy-row">
+                <div
+                  className="main-strategy-selector"
+                  role="radiogroup"
+                  aria-label="Recommendation strategy"
+                >
+                  {STRATEGY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={strategy === opt.value}
+                      className={`main-strategy-option${
+                        strategy === opt.value ? ' is-active' : ''
+                      }`}
+                      onClick={() => handleStrategyChange(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {strategy === 'tag' && (
+                  <button
+                    type="button"
+                    className="main-strategy-edit-btn"
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    View / set tag preferences
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {loadError && <p className="main-section-desc" role="alert">{loadError}</p>}
+          {eventsLoading && !loadError && (
+            <p className="main-section-desc" aria-live="polite">Loading events...</p>
+          )}
+          <ul className="main-event-list">
+            {events.map((ev) => (
+              <li key={ev.id}>
+                <Link to={`/events/${ev.id}`} className="main-event-link">
+                  <article className="main-event-card">
+                    <div className="main-event-card-body">
+                      <h3 className="main-event-title">{ev.title}</h3>
+                      <p className="main-event-meta main-event-meta-primary">{formatEventDate(ev)}</p>
+                      {ev.location && <p className="main-event-meta">{ev.location}</p>}
+                      {tagsByEventId[ev.id] && tagsByEventId[ev.id].length > 0 && (
+                        <div className="main-event-tags">
+                          <EventTagDisplay tagIds={tagsByEventId[ev.id]} limit={3} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="main-event-card-aside">
+                      <span
+                        className={`main-event-badge${
+                          ev.status !== 'published'
+                            ? ' is-closed'
+                            : ev.registeredCount
+                              ? ' is-going'
+                              : ' is-open'
+                        }`}
+                      >
+                        {formatSpots(ev)}
+                      </span>
+                    </div>
+                  </article>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {events.length === 0 && !loadError && !eventsLoading && (
+            <p className="main-section-desc">No published events yet.</p>
+          )}
         </section>
 
       </main>

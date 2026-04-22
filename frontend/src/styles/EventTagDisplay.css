@@ -11,9 +11,9 @@
   font-weight: 500;
   padding: 4px 10px;
   border-radius: 999px;
-  background: var(--bg-subtle);
-  color: var(--iron-gray);
-  border: 1px solid var(--steel-gray);
+  background: rgba(17, 24, 39, 0.04);
+  color: rgba(17, 24, 39, 0.72);
+  border: 1px solid rgba(17, 24, 39, 0.1);
   line-height: 1.35;
   white-space: nowrap;
   letter-spacing: 0.01em;
@@ -25,9 +25,9 @@
   font-weight: 500;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.04);
-  color: var(--iron-gray);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(17, 24, 39, 0.04);
+  color: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(17, 24, 39, 0.1);
   line-height: 1.35;
   white-space: nowrap;
   letter-spacing: 0.01em;
