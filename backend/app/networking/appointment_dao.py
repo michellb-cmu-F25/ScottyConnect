@@ -130,14 +130,15 @@ class AppointmentDAO:
         )
         
     # Checks if there is an active/upcoming interaction (Pending or Accepted) 
-    # between two users in either direction.
-    def has_active_meeting_between_users(self, user_a: str, user_b: str) -> bool:
+    # between two users in either direction that is scheduled for the future.
+    def has_active_meeting_between_users(self, user_a: str, user_b: str, now: datetime) -> bool:
         query = {
             "$or": [
                 {"sender_id": user_a, "receiver_id": user_b},
                 {"sender_id": user_b, "receiver_id": user_a}
             ],
-            "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]}
+            "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]},
+            "scheduled_at": {"$gt": now}
         }
         return self._col.count_documents(query, limit=1) > 0
 
