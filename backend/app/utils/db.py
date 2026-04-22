@@ -4,7 +4,6 @@ Database access (singleton). Wraps PyMongo client and database handle.
 
 import os
 
-import certifi
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
@@ -21,11 +20,8 @@ class Database:
         name = os.getenv("MONGO_DB")
         if not uri or not name:
             raise ValueError("MONGO_URI and MONGO_DB must be set in the environment")
-        
-        # Use certifi to provide root certificates for SSL verification on macOS
-        self.client = MongoClient(uri, tlsCAFile=certifi.where())
+        self.client = MongoClient(uri)
         self.db = self.client[name]
-
 
 
 def get_database() -> Database:
