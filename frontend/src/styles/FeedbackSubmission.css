@@ -1,4 +1,4 @@
-/* ── Page shell ─────────────────────────────────────────────── */
+
 .fs-page {
   min-height: 100svh;
   display: flex;
@@ -9,7 +9,6 @@
   color: var(--text-primary);
 }
 
-/* ── Sticky header ──────────────────────────────────────────── */
 .fs-header {
   position: sticky;
   top: 0;
@@ -52,7 +51,6 @@
   height: 18px;
 }
 
-/* ── Main content ───────────────────────────────────────────── */
 .fs-content {
   flex: 1;
   width: 100%;
@@ -69,7 +67,6 @@
   color: var(--black);
 }
 
-/* ── Card ───────────────────────────────────────────────────── */
 .fs-card {
   background: var(--white);
   border: 1px solid var(--steel-gray);
@@ -78,7 +75,6 @@
   padding: 28px 28px;
 }
 
-/* ── Section ────────────────────────────────────────────────── */
 .fs-section {
   margin-bottom: 28px;
 }
@@ -98,7 +94,6 @@
   border-bottom: 1px solid var(--steel-gray);
 }
 
-/* ── Info rows ──────────────────────────────────────────────── */
 .fs-info-row {
   display: flex;
   gap: 8px;
@@ -121,7 +116,6 @@
   color: var(--iron-gray);
 }
 
-/* ── Form ───────────────────────────────────────────────────── */
 .fs-form {
   display: flex;
   flex-direction: column;
@@ -173,7 +167,6 @@
   color: var(--iron-gray);
 }
 
-/* ── Submit button ──────────────────────────────────────────── */
 .fs-submit-btn {
   align-self: flex-start;
   padding: 10px 24px;
@@ -201,14 +194,12 @@
   cursor: not-allowed;
 }
 
-/* ── Inline error ───────────────────────────────────────────── */
 .fs-error {
   font-size: 0.9375rem;
   color: #b91c1c;
   margin: 0;
 }
 
-/* ── State screens (loading / success / blocked) ────────────── */
 .fs-state {
   display: flex;
   flex-direction: column;
@@ -237,7 +228,6 @@
   color: #b91c1c;
 }
 
-/* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 480px) {
   .fs-header-inner {
     padding: 12px 16px;

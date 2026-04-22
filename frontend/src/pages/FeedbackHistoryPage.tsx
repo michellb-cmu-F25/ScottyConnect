@@ -36,7 +36,7 @@ export default function FeedbackHistoryPage() {
     }
 
     try {
-      // Step 1: fetch the user's feedback history
+      // fetch the user's feedback history
       const feedbackRes = await fetch(apiUrl('/api/feedback/me'), {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -55,7 +55,7 @@ export default function FeedbackHistoryPage() {
         return
       }
 
-      // Step 2: fetch all unique events in parallel
+      // fetch all unique events in parallel
       const uniqueEventIds = [...new Set(items.map(f => f.event_id))]
       const eventResponses = await Promise.all(
         uniqueEventIds.map(id =>
