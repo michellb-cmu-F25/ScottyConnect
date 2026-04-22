@@ -21,10 +21,10 @@ class AttendanceSignalDAO:
     def count_attendance_by_event(self) -> dict[str, int]:
         """
         Return a mapping of event_id -> number of users who actually attended
-        (i.e. attendance_time is set). Events with zero attendance are omitted.
+        (i.e. registration_time is set). Events with zero registration are omitted.
         """
         pipeline = [
-            {"$match": {"attendance_time": {"$ne": None}}},
+            {"$match": {"registration_time": {"$ne": None}}},
             {"$group": {"_id": "$event_id", "count": {"$sum": 1}}},
         ]
         return {doc["_id"]: doc["count"] for doc in self._col.aggregate(pipeline)}
