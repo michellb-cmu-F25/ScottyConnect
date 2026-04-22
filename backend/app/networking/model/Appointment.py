@@ -5,7 +5,8 @@ Defines the structure and lifecycle of a coffee chat appointment.
 
 from datetime import datetime, timezone
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
 
 
 # Possible statuses for a coffee chat invitation.
@@ -32,6 +33,16 @@ class Appointment(BaseModel):
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
+    
+    @field_validator("scheduled_at", mode="before")
+    @classmethod
+    def ensure_aware(cls, v):
+        if isinstance(v, str):
+            v = datetime.fromisoformat(v.replace(' ', 'T'))
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
+
 
     # Validates appointment status transitions.
     def can_transition(self, new_status: AppointmentStatus) -> bool:
