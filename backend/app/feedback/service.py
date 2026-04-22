@@ -16,6 +16,7 @@ from app.feedback.schemas import (
     PublicFeedback,
     SubmitFeedbackRequest,
 )
+from app.logging.service import LoggerService
 
 FEEDBACK_SERVICE_EXTENSION_KEY = "feedback_service"
 
@@ -31,6 +32,7 @@ class FeedbackService(Service):
         super().__init__()
         self.key = FEEDBACK_SERVICE_EXTENSION_KEY
         self._dao = feedback_dao or FeedbackDAO()
+        self._logger = LoggerService(service_name=self.key)
         # Subscribe to lifecycle events to be notified when events end.
         self.subscribeToMessages([MessageType.LIFECYCLE_MESSAGE])
 
@@ -78,7 +80,7 @@ class FeedbackService(Service):
             comment=req.comment,
         )
         saved = self._dao.insert(feedback)
-
+        self._logger.info(f"Feedback submitted for event {event_id} by participant {participant_id}", event_id=event_id, user_id=participant_id)
         # Notify Notification, Recommendation, and OrganizerProfile modules.
         self.publishMessage(
             Message(
@@ -150,6 +152,7 @@ class FeedbackService(Service):
     #   2. Persist a feedback session so the feedback window is open for those users.
     #   3. Publish a FEEDBACK_MESSAGE so the Notification module can alert eligible users.
     def processMessage(self, message: Message) -> None:
+        self._logger.info(f"Processing message: {message}")
         if message.get_type() == MessageType.LIFECYCLE_MESSAGE:
             data = message.get_data()
             new_status = data.get("new_status")

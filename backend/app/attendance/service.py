@@ -19,10 +19,7 @@ from app.bus.message_bus import Service
 from app.bus.message import Message, MessageType
 from app.lifecycle.model.Event import Event
 from app.lifecycle.schemas import PublicEvent
-
-import logging
-
-logger = logging.getLogger(__name__)
+from app.logging.service import LoggerService
 
 ATTENDANCE_SERVICE_EXTENSION_KEY = "attendance_service"
 
@@ -37,6 +34,7 @@ class AttendanceService(Service):
         super().__init__()
         self.key = ATTENDANCE_SERVICE_EXTENSION_KEY
         self._dao = attendance_dao or AttendanceDAO()
+        self._logger = LoggerService(service_name=self.key)
 
     @staticmethod
     def _to_public_user(user: User) -> PublicUser:
@@ -81,6 +79,7 @@ class AttendanceService(Service):
             return RegisterEventResponse(registered=True, message="User is already registered for this event.", code=409)
         self._dao.insert(AttendanceRecord(event_id=event_id, user_id=user_id))
         self.send_registration_confirmation(event, user_id)  
+        self._logger.info(f"User {user_id} registered for event {event_id}", user_id=user_id, event_id=event_id)
         return RegisterEventResponse(registered=True, message="Successfully registered for the event.", code=201)
 
     # Unregisters a single user from an event.
@@ -94,6 +93,7 @@ class AttendanceService(Service):
             return RegisterEventResponse(registered=False, message="Event no longer available.", code=404)
         self.send_registration_cancellation(event, user_id)
         self._dao.delete(registration.id)
+        self._logger.info(f"User {user_id} unregistered from event {event_id}", user_id=user_id, event_id=event_id)
         return RegisterEventResponse(registered=False, message="Successfully unregistered from the event.", code=200)
 
     # Attendance operations
@@ -190,7 +190,7 @@ class AttendanceService(Service):
         try:
             user = self._dao.find_user_by_id(user_id)
             if not user:
-                logger.error("User not found: %s", user_id)
+                self._logger.error(f"Failed sending registration confirmation message: User not found - {user_id}", event_id=event.id, user_id=user_id)
                 return
             self.publishMessage(Message(MessageType.EVENT_REGISTRATION_CONFIRMATION, {
                     "event_id": event.id,
@@ -198,13 +198,13 @@ class AttendanceService(Service):
                     "recipient_email": user.email,
                 }))
         except Exception as e:
-            logger.error("Failed to publish EVENT_REGISTRATION_CONFIRMATION message: %s", e)
+            self._logger.error(f"Failed to publish EVENT_REGISTRATION_CONFIRMATION message: {e}", event_id=event.id, user_id=user_id)
         
     def send_registration_cancellation(self, event: Event, user_id: str) -> None:
         try:
             user = self._dao.find_user_by_id(user_id)
             if not user:
-                logger.error("User not found: %s", user_id)
+                self._logger.error(f"Failed sending registration cancellation message: User not found - {user_id}", event_id=event.id, user_id=user_id)
                 return
             self.publishMessage(Message(MessageType.EVENT_REGISTRATION_CANCELLED, {
                 "event_id": event.id,
@@ -212,5 +212,4 @@ class AttendanceService(Service):
                 "recipient_email": user.email,
             }))
         except Exception as e:
-            logger.error("Failed to publish EVENT_REGISTRATION_CANCELLED message: %s", e)
-        
+            self._logger.error(f"Failed to publish EVENT_REGISTRATION_CANCELLED message: {e}", event_id=event.id, user_id=user_id)        

@@ -26,6 +26,8 @@ from app.lifecycle.schedule_validation import (
     validate_event_schedule,
 )
 from app.lifecycle.states import resolve_state
+from app.logging.service import LoggerService
+
 LIFECYCLE_SERVICE_EXTENSION_KEY = "lifecycle_service"
 
 
@@ -45,7 +47,7 @@ class LifecycleService(Service):
         self.key = LIFECYCLE_SERVICE_EXTENSION_KEY
         self._dao = lifecycle_dao or LifecycleDAO()
         self._attendance_dao = attendance_dao or AttendanceDAO()
-
+        self._logger = LoggerService(service_name=self.key)
     def _can_read_event_detail(
         self, event: Event, requester_id: str | None
     ) -> bool:
@@ -196,6 +198,7 @@ class LifecycleService(Service):
         self, event_id: str, target_status: str, requester_id: str
     ) -> EventResponse:
         event = self._dao.find_by_id(event_id)
+        prev_status = event.status
         if event is None:
             return EventResponse(message="Event not found", event=None, code=404)
 
@@ -213,7 +216,7 @@ class LifecycleService(Service):
             return EventResponse(message=str(e), event=None, code=400)
 
         updated = self._persist_transition(event, target_status)
-
+        self._logger.info(f"Event {updated.title} transitioned from {prev_status} to {target_status} by {requester_id}", event_id=updated.id, user_id=requester_id)
         return EventResponse(
             message="Success",
             event=self._to_public_event(updated),
@@ -297,6 +300,7 @@ class LifecycleService(Service):
             updates["status"] = target_status
 
         updated = self._dao.update_fields(event_id, updates)
+        self._logger.info(f"Draft event {updated.title} updated by user {user_id}", event_id=event_id, user_id=user_id)
         return EventResponse(
             message="Success",
             event=self._to_public_event(updated),
@@ -320,4 +324,5 @@ class LifecycleService(Service):
         except ValueError as e:
             return EventResponse(message=str(e), event=None, code=400)
         self._dao.delete_by_id(event_id)
+        self._logger.info(f"Draft event {event.title} deleted by user {user_id}", event_id=event_id, user_id=user_id)
         return EventResponse(message="Event deleted", event=None, code=200)

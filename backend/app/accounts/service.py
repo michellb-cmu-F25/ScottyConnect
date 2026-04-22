@@ -19,6 +19,7 @@ from app.accounts.schemas import (
     UpdateProfileRequest,
 )
 from app.accounts.user_dao import UserDAO
+from app.logging.service import LoggerService
 from app.utils.jwt import JWT
 from app.bus.message_bus import Service
 from app.bus.message import Message, MessageType
@@ -43,6 +44,7 @@ class AccountService(Service):
         super().__init__()
         self.key = ACCOUNT_SERVICE_EXTENSION_KEY
         self._users = user_dao or UserDAO()
+        self._logger = LoggerService(service_name=self.key)
         secret = os.getenv("JWT_SECRET")
         if not secret:
             raise ValueError("JWT_SECRET is not set")
@@ -91,6 +93,7 @@ class AccountService(Service):
                 "verification_code": saved.verification_code,
             }
         ))
+        self._logger.info(f"User {saved.username} registered successfully", user_id=saved.id)
         return RegisterResponse(message="Success", user=self._to_public_user(saved), code=201)
 
     def verify(self, request: VerifyRequest) -> VerifyResponse:
@@ -113,6 +116,7 @@ class AccountService(Service):
 
         # Return response
         verified_user = user.model_copy(update={"verified": True})
+        self._logger.info(f"User {verified_user.username} verified successfully", user_id=verified_user.id)
         return VerifyResponse(
             message="Success",
             user=self._to_public_user(verified_user),
@@ -143,7 +147,7 @@ class AccountService(Service):
         
         # Generate token
         token = self._tokens.generate_token(user.id)
-        
+        self._logger.info(f"User {user.username} logged in.", user_id=user.id)
         # Return response
         return LoginResponse(
             message="Success",
@@ -160,6 +164,7 @@ class AccountService(Service):
         
         user.bio = request.bio
         user.tags = request.tags
+        self._logger.info(f"User {user.username} updated profile", user_id=user.id)
         return self._users.update(user)
 
     def get_discover_users(self, current_user_id: str | None = None) -> list[PublicUser]:
