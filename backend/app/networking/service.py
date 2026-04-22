@@ -249,7 +249,8 @@ class NetworkingService(ICoffeeChatMediator):
         
         if success:
             self._logger.info(f"Invitation cancelled by {sender_id} for invite {appointment_id}", user_id=sender_id, event_id=appointment_id)
-             return AppointmentResponse(message="Invitation cancelled", code=200)
+            return AppointmentResponse(message="Invitation cancelled", code=200)
+
 
         return AppointmentResponse(message="Cancellation failed or invalid timing", code=400)
 
