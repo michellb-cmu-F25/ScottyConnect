@@ -119,7 +119,8 @@ class NetworkingService(ICoffeeChatMediator):
                 "receiver_id": appt.receiver_id, 
                 "responder_id": responder.user_id
             })
-            self._logger.info(f"Invitation {"accepted" if accept else "declined"} by {responder.user_id} for invite {invite_id}", user_id=responder.user_id, event_id=invite_id)
+            self._logger.info(f"Invitation {'accepted' if accept else 'declined'} by {responder.user_id} for invite {invite_id}", user_id=responder.user_id, event_id=invite_id)
+
             return True
 
         return False
@@ -184,8 +185,7 @@ class NetworkingService(ICoffeeChatMediator):
             scheduled_at=scheduled_at,
             receiver_role=receiver_user.role,
         )
-        if success:
-            self._logger.info(f"Invitation initiated successfully from {sender_id} to {req.receiver_id}", user_id=sender_id, event_id=req.invite_id)
+
         code = 201 if success else 400
         return AppointmentResponse(message=reason or "Failed to initiate chat", code=code)
 
