@@ -16,6 +16,7 @@ class Log(BaseModel):
     id: str | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     log_level: LogLevel
+    service_name: str | None = None
     user_id: str | None = None
     event_id: str | None = None
     message: str

@@ -10,13 +10,14 @@ from app.logging.Model.Log import Log, LogLevel
 import logging
 logger = logging.getLogger(__name__)
 
-class LoggerService:
-    def __init__(self, logger_dao: LoggerDAO | None = None) -> None:
+class LoggerService():
+    def __init__(self, service_name: str, logger_dao: LoggerDAO | None = None) -> None:
         self._dao = logger_dao or LoggerDAO()
+        self.service_name = service_name
 
     # Helpers
     def _log(self, log_level: LogLevel, message: str, user_id: str | None = None, event_id: str | None = None) -> None:
-        log = Log(log_level=log_level, message=message, user_id=user_id, event_id=event_id)
+        log = Log(log_level=log_level, message=message, service_name=self.service_name, user_id=user_id, event_id=event_id)
         self._dao.insert(log)
 
     # Fire and forget log

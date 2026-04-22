@@ -8,14 +8,12 @@ Handles notification operations using NotificationDAO for persistence.
 from app.notification.notification_dao import EmailDAO
 from app.notification.model.Email import Email
 from app.notification.gmail_sender import GmailSender
+from app.logging.service import LoggerService
 
 # Standard Utilities
-import logging
 import time
 from datetime import datetime, timedelta, timezone
 from threading import Lock, Thread
-
-logger = logging.getLogger(__name__)
 
 # Builders
 from app.notification.builder.verification_builder import VerificationBuilder
@@ -35,6 +33,9 @@ from app.notification.builder.coffee_cancel_builder import CoffeeChatCancelledBu
 from app.bus.message_bus import Service
 from app.bus.message import Message
 from app.bus.message import MessageType
+
+import logging
+logger = logging.getLogger(__name__)
 
 NOTIFICATION_SERVICE_EXTENSION_KEY = "notification_service"
 
@@ -61,6 +62,7 @@ class NotificationService(Service):
         self._worker_lock = Lock()
         self._dao = EmailDAO()
         self.key = NOTIFICATION_SERVICE_EXTENSION_KEY
+        self._logger = LoggerService(service_name=self.key)
         self.subscribeToMessages(SUBSCRIBED_MESSAGE_TYPES)
 
     @staticmethod
@@ -249,7 +251,7 @@ class NotificationService(Service):
         }
         handler = handlers.get(message_type)
         if handler is None:
-            logger.error(f"Invalid message type: {message_type}")
+            self._logger.error(f"Invalid message type: {message_type}")
             return
         emails = handler(message)
         for email in emails:
@@ -259,23 +261,23 @@ class NotificationService(Service):
         cnt = 1
         while True:
             try:
-                logger.info("Polling for unsent emails -- cycle %d", cnt)
                 emails = self._dao.find_unsent_emails()
                 for email in emails:
                     try:
                         if self._send_email(email):
                             self._dao.update_sent_successfully(email.id)
                     except Exception:
-                        logger.error(
-                            "Failed to process email notification id=%s", email.id
+                        self._logger.error(
+                            f"Failed to process email notification id={email.id}", 
+                            event_id=email.event_id if email.event_id else None
                         )
             except Exception as e:
-                logger.error("Notification polling cycle failed: %s", e)
+                self._logger.error(f"Notification polling cycle {cnt} failed: {e}")
             cnt += 1
             time.sleep(60)
         
     def _send_email(self, email: Email) -> bool:
-        logger.info(f"Sending email to {email.recipient_email} for event {email.event_id}")
+        self._logger.info(f"Sending email to {email.recipient_email} for event {email.event_id}")
         return GmailSender().send_email(email.recipient_email, email.subject, email.body)
         
     
