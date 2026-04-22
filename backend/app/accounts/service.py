@@ -70,9 +70,9 @@ class AccountService(Service):
         if request.password != request.confirm_password:
             return RegisterResponse(message="Passwords do not match", user=None, code=400)
 
-        # Check if email ends in @andrew.cmu.edu
-        if not request.email.endswith("@andrew.cmu.edu"):
-            return RegisterResponse(message="Must be a CMU affiliated email (@andrew.cmu.edu)", user=None, code=400)
+        # Check if email ends in cmu.edu
+        if not request.email.endswith("cmu.edu"):
+            return RegisterResponse(message="Must be a CMU affiliated email (@xxx.cmu.edu)", user=None, code=400)
 
         # Create user
         user = User(
