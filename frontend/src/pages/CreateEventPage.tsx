@@ -419,6 +419,9 @@ export function EventForm({
                   placeholder="Leave blank for unlimited"
                   value={form.capacity}
                   onChange={(e) => update('capacity', e.target.value)}
+                  onWheel={(e) => {
+                    e.currentTarget.blur()
+                  }}
                 />
               </div>
             </div>

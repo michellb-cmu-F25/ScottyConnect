@@ -5,12 +5,13 @@ Data access object for managing Appointment documents in MongoDB.
 
 from datetime import datetime, time, timezone
 from typing import List, Optional
-
 from bson import ObjectId
 
 from app.networking.model.Appointment import Appointment, AppointmentStatus
+from app.networking.utils import get_la_day_boundaries_in_utc, format_to_la_display
 from app.utils.db import Database, get_database
 
+EVENTS_COLLECTION = "events"
 APPOINTMENTS_COLLECTION = "appointments"
 
 
@@ -74,14 +75,15 @@ class AppointmentDAO:
 
     # Counts non-declined appointments for a user on a given calendar day.
     def count_by_user_and_date(self, user_id: str, date: datetime) -> int:
-        start_of_day = datetime.combine(date.date(), time.min).replace(tzinfo=timezone.utc)
-        end_of_day = datetime.combine(date.date(), time.max).replace(tzinfo=timezone.utc)
+        # Determine the "day" boundary in LA time context
+        start_of_day, end_of_day = get_la_day_boundaries_in_utc(date)
         
         query = {
             "sender_id": user_id,
             "created_at": {"$gte": start_of_day, "$lte": end_of_day},
-            "status": {"$ne": AppointmentStatus.DECLINED.value}
+            "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]}
         }
+
         return self._col.count_documents(query)
 
     # Counts distinct receivers invited by sender for a receiver role on a given day.
@@ -92,15 +94,17 @@ class AppointmentDAO:
         date: datetime | None = None,
     ) -> int:
         date = date or datetime.now(timezone.utc)
-        start_of_day = datetime.combine(date.date(), time.min).replace(tzinfo=timezone.utc)
-        end_of_day = datetime.combine(date.date(), time.max).replace(tzinfo=timezone.utc)
+        # Determine the "day" boundary in LA time context
+        start_of_day, end_of_day = get_la_day_boundaries_in_utc(date)
         receiver_ids = self._col.distinct(
             "receiver_id",
             {
                 "sender_id": sender_id,
                 "receiver_role": receiver_role.upper(),
                 "created_at": {"$gte": start_of_day, "$lte": end_of_day},
+                "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]},
             },
+
         )
         return len(receiver_ids)
 
@@ -113,8 +117,8 @@ class AppointmentDAO:
         date: datetime | None = None,
     ) -> bool:
         date = date or datetime.now(timezone.utc)
-        start_of_day = datetime.combine(date.date(), time.min).replace(tzinfo=timezone.utc)
-        end_of_day = datetime.combine(date.date(), time.max).replace(tzinfo=timezone.utc)
+        # Determine the "day" boundary in LA time context
+        start_of_day, end_of_day = get_la_day_boundaries_in_utc(date)
         return (
             self._col.count_documents(
                 {
@@ -122,21 +126,24 @@ class AppointmentDAO:
                     "receiver_id": receiver_id,
                     "receiver_role": receiver_role.upper(),
                     "created_at": {"$gte": start_of_day, "$lte": end_of_day},
+                    "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]},
                 },
+
                 limit=1,
             )
             > 0
         )
         
     # Checks if there is an active/upcoming interaction (Pending or Accepted) 
-    # between two users in either direction.
-    def has_active_meeting_between_users(self, user_a: str, user_b: str) -> bool:
+    # between two users in either direction that is scheduled for the future.
+    def has_active_meeting_between_users(self, user_a: str, user_b: str, now: datetime) -> bool:
         query = {
             "$or": [
                 {"sender_id": user_a, "receiver_id": user_b},
                 {"sender_id": user_b, "receiver_id": user_a}
             ],
-            "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]}
+            "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]},
+            "scheduled_at": {"$gt": now}
         }
         return self._col.count_documents(query, limit=1) > 0
 
@@ -159,8 +166,8 @@ class AppointmentDAO:
         for doc in cursor:
             scheduled_at = doc.get("scheduled_at")
             if isinstance(scheduled_at, datetime):
-                label = scheduled_at.strftime("%a, %b %d @ %I:%M %p").replace(" 0", " ")
-                slots.append(label)
+                slots.append(format_to_la_display(scheduled_at))
+
         return slots
 
     # Helper to convert MongoDB document to Appointment Pydantic model.

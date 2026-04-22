@@ -172,7 +172,7 @@ export default function MyMeetingsPage() {
                         </div>
                       )}
 
-                      {appt.status === 'ACCEPTED' && !pastMeeting && isSender && (
+                      {appt.status === 'ACCEPTED' && !pastMeeting && (
                         <div className="me-event-actions">
                           <button className="me-action-btn me-action-secondary" onClick={() => handleCancel(appt.id)}>Cancel appointment</button>
                         </div>
