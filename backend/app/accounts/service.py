@@ -21,6 +21,7 @@ from app.accounts.schemas import (
 from app.accounts.user_dao import UserDAO
 from app.logging.service import LoggerService
 from app.utils.jwt import JWT
+from app.utils.bcrypt import hash_password, verify_password
 from app.bus.message_bus import Service
 from app.bus.message import Message, MessageType
 from app.utils.verification import generate_verification_code
@@ -77,7 +78,7 @@ class AccountService(Service):
         user = User(
             username=request.username,
             email=request.email,
-            password=request.password,
+            password=hash_password(request.password),
             verification_code=generate_verification_code(),
             role=request.role,
         )
@@ -137,7 +138,7 @@ class AccountService(Service):
             return LoginResponse(message="Invalid credentials", user=None, token=None, code=401)
         
         # Check if password is correct
-        if user.password != request.password:
+        if not verify_password(request.password, user.password):
             return LoginResponse(message="Invalid credentials", user=None, token=None, code=401)
         
         # Check if user is verified (return user so client can route to verify with email)
