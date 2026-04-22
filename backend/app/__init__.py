@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import Any
 
@@ -27,7 +26,7 @@ def create_app():
         dsn=os.getenv("SENTRY_DSN"),
         integrations=[
             FlaskIntegration(),
-            LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+            LoggingIntegration(level=20, event_level=40),
         ],
         # Prefer explicit user context over default PII collection in auth-heavy APIs.
         send_default_pii=False,

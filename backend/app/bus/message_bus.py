@@ -5,8 +5,7 @@ from __future__ import annotations
 
 from app.bus.message import Message, MessageType
 
-import logging
-logger = logging.getLogger(__name__)
+from app.logging.service import LoggerService
 
 class Service:
     """
@@ -23,8 +22,10 @@ class Service:
     """
 
     def publishMessage(self, message: Message) -> None:
-        logger.info(f"{self.key} - Publishing message: {message}")
+       
         MessageBus.publish(message)
+        _logger = LoggerService(service_name="MESSAGE_BUS")
+        _logger.info(f"Publishing message: {message}", event_id=message.data.get("event_id"), user_id=message.data.get("user_id"))
 
     """
     Subclasses should implement this method to process messages from the message bus

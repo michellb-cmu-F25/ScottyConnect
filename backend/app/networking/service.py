@@ -20,6 +20,7 @@ from app.networking.schemas import (
     InviteRequest,
     RespondRequest,
 )
+from app.logging.service import LoggerService
 
 NETWORKING_SERVICE_EXTENSION_KEY = "networking_service"
 
@@ -34,6 +35,7 @@ class NetworkingService(ICoffeeChatMediator):
         self._dao = dao or AppointmentDAO()
         self._invite_policy_factory = InvitePolicyFactory()
         self.key = NETWORKING_SERVICE_EXTENSION_KEY
+        self._logger = LoggerService(service_name=self.key)
 
     # --- ICoffeeChatMediator Implementation ---
 
@@ -86,6 +88,7 @@ class NetworkingService(ICoffeeChatMediator):
                 MessageType.COFFEE_CHAT_REQUESTED,
                 {"sender_id": sender.user_id, "receiver_id": receiver_id, "invite_id": saved.id}
             )
+            self._logger.info(f"Invitation sent successfully from {sender.user_id} to {receiver_id}", user_id=sender.user_id, event_id=saved.id)
             return True, "Invitation sent successfully"
             
         return False, "Failed to save invitation"
@@ -105,6 +108,7 @@ class NetworkingService(ICoffeeChatMediator):
         if updated:
             msg_type = MessageType.COFFEE_CHAT_ACCEPTED if accept else MessageType.COFFEE_CHAT_DECLINED
             self.publishMessage(msg_type, {"invite_id": invite_id, "sender_id": appt.sender_id, "receiver_id": appt.receiver_id, "responder_id": responder.user_id})
+            self._logger.info(f"Invitation {"accepted" if accept else "declined"} by {responder.user_id} for invite {invite_id}", user_id=responder.user_id, event_id=invite_id)
             return True
 
         return False
@@ -139,7 +143,8 @@ class NetworkingService(ICoffeeChatMediator):
             scheduled_at=scheduled_at,
             receiver_role=receiver_user.role,
         )
-        
+        if success:
+            self._logger.info(f"Invitation initiated successfully from {sender_id} to {req.receiver_id}", user_id=sender_id, event_id=req.invite_id)
         code = 201 if success else 400
         return AppointmentResponse(message=reason or "Failed to initiate chat", code=code)
 
@@ -200,6 +205,7 @@ class NetworkingService(ICoffeeChatMediator):
                 MessageType.COFFEE_CHAT_CANCELLED,
                 {"invite_id": appointment_id, "sender_id": sender_id, "receiver_id": appt.receiver_id}
             )
+            self._logger.info(f"Invitation cancelled by {sender_id} for invite {appointment_id}", user_id=sender_id, event_id=appointment_id)
             return AppointmentResponse(message="Invitation cancelled", code=200)
 
         return AppointmentResponse(message="Cancellation failed", code=400)
