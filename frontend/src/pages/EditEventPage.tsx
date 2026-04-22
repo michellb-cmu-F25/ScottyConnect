@@ -79,7 +79,7 @@ export default function EditEventPage() {
       // Keep updates and lifecycle transitions separate:
       // - PUT persists draft field edits
       // - POST /transition performs status changes (and is logged as a transition)
-      const updatedDraft = await updateEvent(current.id, form, 'draft')
+      await updateEvent(current.id, form, 'draft')
       // Save tags (best-effort — don't block publish if tags fail).
       try {
         await setEventTags(current.id, tagIds)
