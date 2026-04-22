@@ -21,6 +21,7 @@ from app.networking.schemas import (
     RespondRequest,
 )
 from app.logging.service import LoggerService
+from app.networking.utils import format_to_la_display, LA_TZ
 
 NETWORKING_SERVICE_EXTENSION_KEY = "networking_service"
 
@@ -61,6 +62,7 @@ class NetworkingService(ICoffeeChatMediator):
             dao=self._dao,
             now=datetime.now(timezone.utc),
         )
+
         if not allowed:
             return False, reason or "Policy restriction"
 
@@ -98,25 +100,64 @@ class NetworkingService(ICoffeeChatMediator):
         Updates invitation status and emits corresponding events.
         """
         status = AppointmentStatus.ACCEPTED if accept else AppointmentStatus.DECLINED
+        
         updated = self._dao.update_status_atomically(
             invite_id,
             expected_status=AppointmentStatus.PENDING,
             new_status=status,
         )
 
-        appt = self._dao.find_by_id(invite_id)
         if updated:
+            appt = self._dao.find_by_id(invite_id)
+            if not appt:
+                return False 
+              
             msg_type = MessageType.COFFEE_CHAT_ACCEPTED if accept else MessageType.COFFEE_CHAT_DECLINED
-            self.publishMessage(msg_type, {"invite_id": invite_id, "sender_id": appt.sender_id, "receiver_id": appt.receiver_id, "responder_id": responder.user_id})
+            self.publishMessage(msg_type, {
+                "invite_id": invite_id, 
+                "sender_id": appt.sender_id, 
+                "receiver_id": appt.receiver_id, 
+                "responder_id": responder.user_id
+            })
             self._logger.info(f"Invitation {"accepted" if accept else "declined"} by {responder.user_id} for invite {invite_id}", user_id=responder.user_id, event_id=invite_id)
             return True
+
+        return False
+
+
+    def dispatch_cancellation(self, canceller: Participant, invite_id: str) -> bool:
+        """
+        Internal mediator logic for cancelling an invitation.
+        """
+        appt = self._dao.find_by_id(invite_id)
+        if not appt:
+            return False
+
+        # Enforce cancellation policy: only future meetings
+        now = datetime.now(timezone.utc)
+        if appt.scheduled_at < now:
+            return False
+
+        success = self._dao.update_status_atomically(
+            invite_id, expected_status=appt.status, new_status=AppointmentStatus.CANCELLED
+        )
+        if success:
+            self.publishMessage(
+                MessageType.COFFEE_CHAT_CANCELLED,
+                {"invite_id": invite_id, "sender_id": appt.sender_id, "receiver_id": appt.receiver_id, "canceller_id": canceller.user_id}
+            )
+            self._logger.info(f"Invitation cancelled by {canceller.user_id} for invite {invite_id}", user_id=canceller.user_id, event_id=invite_id)
+            return True
+
 
         return False
 
     def validate_availability(self, user_id: str, scheduled_at: datetime) -> bool:
         """Checks if a timeslot is free for the specified user."""
         busy_slots = self._dao.get_occupied_slots(user_id)
-        slot_label = scheduled_at.strftime("%a, %b %d @ %I:%M %p").replace(" 0", " ")
+        
+        # Convert UTC input to LA time via utility for consistent comparison
+        slot_label = format_to_la_display(scheduled_at)
         return slot_label not in busy_slots
 
     # --- Public Service Methods ---
@@ -137,7 +178,7 @@ class NetworkingService(ICoffeeChatMediator):
         )
         participant.set_mediator(self)
         
-        scheduled_at = self._wall_clock_datetime(req.scheduled_at)
+        scheduled_at = self._normalize_to_utc(req.scheduled_at)
         success, reason = participant.initiate_chat(
             receiver_id=req.receiver_id,
             scheduled_at=scheduled_at,
@@ -180,6 +221,11 @@ class NetworkingService(ICoffeeChatMediator):
 
     def cancel_invite(self, appointment_id: str, sender_id: str) -> AppointmentResponse:
         """Allows participants to cancel an active appointment."""
+        user_service = get_account_service()
+        user = user_service._users.find_by_id(sender_id)
+        if not user:
+            return AppointmentResponse(message="User not found", code=404)
+
         appt = self._dao.find_by_id(appointment_id)
         if not appt:
             return AppointmentResponse(message="Appointment not found", code=404)
@@ -190,25 +236,20 @@ class NetworkingService(ICoffeeChatMediator):
         if not appt.can_transition(AppointmentStatus.CANCELLED):
             return AppointmentResponse(message="Cannot cancel in current state", code=400)
         
-        # Enforce cancellation policy: only future meetings
-        from zoneinfo import ZoneInfo
-        mv_now = datetime.now(ZoneInfo("America/Los_Angeles")).replace(tzinfo=None)
-        if appt.scheduled_at < mv_now:
-            return AppointmentResponse(message="Cannot cancel past appointments", code=400)
-        
-        success = self._dao.update_status_atomically(
-            appointment_id, expected_status=appt.status, new_status=AppointmentStatus.CANCELLED
+        participant = ParticipantFactory.create(
+            user_id=user.id,
+            username=user.username,
+            role=user.role
         )
+        participant.set_mediator(self)
+        
+        success = participant.cancel_chat(appointment_id)
+        
         if success:
-            # Publish COFFEE_CHAT_CANCELLED message.
-            self.publishMessage(
-                MessageType.COFFEE_CHAT_CANCELLED,
-                {"invite_id": appointment_id, "sender_id": sender_id, "receiver_id": appt.receiver_id}
-            )
             self._logger.info(f"Invitation cancelled by {sender_id} for invite {appointment_id}", user_id=sender_id, event_id=appointment_id)
             return AppointmentResponse(message="Invitation cancelled", code=200)
 
-        return AppointmentResponse(message="Cancellation failed", code=400)
+        return AppointmentResponse(message="Cancellation failed or invalid timing", code=400)
 
     def get_appointments(self, user_id: str) -> List[dict]:
         """Fetches history and resolves participant names."""
@@ -242,8 +283,18 @@ class NetworkingService(ICoffeeChatMediator):
         MessageBus.publish(Message(msg_type, data))
 
     @staticmethod
-    def _wall_clock_datetime(value: datetime) -> datetime:
-        return value.replace(tzinfo=None) if value.tzinfo is not None else value
+    def _normalize_to_utc(value: datetime) -> datetime:
+        """
+        Normalizes any incoming datetime (aware or naive) into a timezone-aware UTC datetime.
+        
+        If the value is naive, it assumes it was intended for the local context (LA time)
+        and converts it to UTC accordingly.
+        """
+        if value.tzinfo is not None:
+            return value.astimezone(timezone.utc)
+        
+        # Assume naive input is from our default LA timezone and convert to UTC
+        return value.replace(tzinfo=LA_TZ).astimezone(timezone.utc)
 
 
 def get_networking_service() -> NetworkingService:

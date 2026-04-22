@@ -6,6 +6,7 @@ from app.notification.model.Email import Email
 from app.notification.builder.templates import EmailTemplates
 from app.bus.message import Message
 from datetime import datetime, timezone, timedelta
+from app.networking.utils import format_to_la_display
 
 class EmailBuilder:   
     def __init__(self, message: Message):
@@ -43,9 +44,11 @@ class EmailBuilder:
         """
 
     def _coffee_chat_json_to_string(self, sender_name: str, receiver_name: str, coffee_chat_info: dict) -> str:
+        scheduled_at = coffee_chat_info["scheduled_at"]
+        scheduled_at_str = format_to_la_display(scheduled_at) if isinstance(scheduled_at, datetime) else str(scheduled_at)
         return f"""
         Coffee Chat Requester: {sender_name}
         Coffee Chat Receiver: {receiver_name}
-        Coffee Chat Time: {coffee_chat_info["scheduled_at"]}
+        Coffee Chat Time: {scheduled_at_str}
         Current Status: {coffee_chat_info["status"]}
         """

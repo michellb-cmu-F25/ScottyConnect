@@ -84,9 +84,14 @@ def cancel_invite(req: CancelRequest):
 def get_appointments(user_id: str):
     if user_id != g.user_id:
         return jsonify({"message": "Unauthorized to view appointments"}), 403
+        
     service = get_networking_service()
     data = service.get_appointments(user_id)
-    return jsonify({"appointments": data, "code": 200}), 200
+    
+    # Standardize response using schema
+    resp = AppointmentListResponse(appointments=data, code=200)
+    return jsonify(resp.model_dump(mode="json")), 200
+
 
 
 # Endpoint to retrieve a user's busy slots for conflict prevention.

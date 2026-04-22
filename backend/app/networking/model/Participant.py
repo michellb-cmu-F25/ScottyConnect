@@ -24,6 +24,8 @@ class ICoffeeChatMediator(Protocol):
         ...
     def validate_availability(self, user_id: str, scheduled_at: datetime) -> bool:
         ...
+    def dispatch_cancellation(self, canceller: 'Participant', invite_id: str) -> bool:
+        ...
 
 
 # Abstract base class for all coffee chat participants.
@@ -61,6 +63,11 @@ class Participant(BaseModel, ABC):
             return self._mediator.finalize_invite_response(self, invite_id, accept=False)
         return False
 
+    # Delegate invitation cancellation to the mediator.
+    def cancel_chat(self, invite_id: str) -> bool:
+        if self._mediator:
+            return self._mediator.dispatch_cancellation(self, invite_id)
+        return False
 
 # Concrete Participant representing a Student.
 class StudentAttendee(Participant):
