@@ -397,8 +397,6 @@
   line-height: 1.35;
 }
 
-/* ── Tasks section ─────────────────────────────────────────── */
-
 .event-detail-tasks-section {
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -504,7 +502,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: rgba(196, 18, 48, 0.55);
+  background: rgba(196, 18, 48, calc(0.65 - var(--task-depth, 0) * 0.18));
   flex-shrink: 0;
 }
 
@@ -514,8 +512,6 @@
   color: rgba(17, 24, 39, 0.85);
   line-height: 1.4;
 }
-
-/* ── End tasks section ─────────────────────────────────────── */
 
 .event-detail-footer {
   margin-top: auto;
