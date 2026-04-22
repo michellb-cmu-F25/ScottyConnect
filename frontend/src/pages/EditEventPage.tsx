@@ -3,6 +3,7 @@ import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import {
   getEvent,
   updateEvent,
+  transitionEventApi,
   apiEventToStored,
   getEventTags,
   setEventTags,
@@ -75,15 +76,19 @@ export default function EditEventPage() {
     if (!current) return undefined
     setSaveError('')
     try {
-      const updated = await updateEvent(current.id, form, status as 'draft' | 'published')
-      // Save tags (best-effort — don't block event save if tags fail).
+      // Keep updates and lifecycle transitions separate:
+      // - PUT persists draft field edits
+      // - POST /transition performs status changes (and is logged as a transition)
+      const updatedDraft = await updateEvent(current.id, form, 'draft')
+      // Save tags (best-effort — don't block publish if tags fail).
       try {
         await setEventTags(current.id, tagIds)
       } catch (tagErr) {
         console.error('Failed to save event tags:', tagErr)
       }
       if (status === 'published') {
-        return { published: apiEventToStored(updated) }
+        const transitioned = await transitionEventApi(current.id, 'published')
+        return { published: apiEventToStored(transitioned) }
       }
       navigate('/my-events')
     } catch (e) {

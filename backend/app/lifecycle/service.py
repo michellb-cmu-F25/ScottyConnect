@@ -166,6 +166,18 @@ class LifecycleService(Service):
             status=req.status,
         )
         saved = self._dao.insert(event)
+        if req.status == "published":
+            self._logger.info(
+                f"Event {saved.title} created as published by {owner_id}",
+                event_id=saved.id,
+                user_id=owner_id,
+            )
+        else:
+            self._logger.info(
+                f"Draft event {saved.title} created by user {owner_id}",
+                event_id=saved.id,
+                user_id=owner_id,
+            )
         self._logger.info(f"Event {req.title} created by {owner_id} with status {req.status}", event_id=saved.id, user_id=owner_id)
         return EventResponse(
             message="Event created",
