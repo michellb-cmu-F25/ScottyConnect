@@ -81,8 +81,9 @@ class AppointmentDAO:
         query = {
             "sender_id": user_id,
             "created_at": {"$gte": start_of_day, "$lte": end_of_day},
-            "status": {"$ne": AppointmentStatus.DECLINED.value}
+            "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]}
         }
+
         return self._col.count_documents(query)
 
     # Counts distinct receivers invited by sender for a receiver role on a given day.
@@ -101,7 +102,9 @@ class AppointmentDAO:
                 "sender_id": sender_id,
                 "receiver_role": receiver_role.upper(),
                 "created_at": {"$gte": start_of_day, "$lte": end_of_day},
+                "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]},
             },
+
         )
         return len(receiver_ids)
 
@@ -123,7 +126,9 @@ class AppointmentDAO:
                     "receiver_id": receiver_id,
                     "receiver_role": receiver_role.upper(),
                     "created_at": {"$gte": start_of_day, "$lte": end_of_day},
+                    "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.ACCEPTED.value]},
                 },
+
                 limit=1,
             )
             > 0
