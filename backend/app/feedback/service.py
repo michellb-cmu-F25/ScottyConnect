@@ -33,7 +33,7 @@ class FeedbackService(Service):
         self.key = FEEDBACK_SERVICE_EXTENSION_KEY
         self._dao = feedback_dao or FeedbackDAO()
         self._logger = LoggerService(service_name=self.key)
-        # Subscribe to lifecycle events to be notified when events end.
+        # Subscribe to lifecycle events to be notified when events end
         self.subscribeToMessages([MessageType.LIFECYCLE_MESSAGE])
 
     @staticmethod
@@ -51,21 +51,21 @@ class FeedbackService(Service):
     def submit_feedback(
         self, event_id: str, participant_id: str, req: SubmitFeedbackRequest
     ) -> FeedbackResponse:
-        # Gate 1: feedback window must be open for this event.
+        #  feedback window must be open for this event.
         if not self._dao.is_feedback_enabled(event_id):
             return FeedbackResponse(
                 message="Feedback is not yet available for this event.",
                 feedback=None,
                 code=403,
             )
-        # Gate 2: the user must be in the eligible pool (confirmed attendee).
+        # the user must be in the eligible pool (confirmed attendee).
         if participant_id not in self._dao.get_eligible_user_ids(event_id):
             return FeedbackResponse(
                 message="You must have attended the event to submit feedback.",
                 feedback=None,
                 code=403,
             )
-        # Gate 3: prevent duplicate submissions.
+        #  prevent duplicate submissions.
         if self._dao.find_by_event_and_participant(event_id, participant_id):
             return FeedbackResponse(
                 message="You have already submitted feedback for this event.",
@@ -81,7 +81,7 @@ class FeedbackService(Service):
         )
         saved = self._dao.insert(feedback)
         self._logger.info(f"Feedback submitted for event {event_id} by participant {participant_id}", event_id=event_id, user_id=participant_id)
-        # Notify Notification, Recommendation, and OrganizerProfile modules.
+        # Notify Notification
         self.publishMessage(
             Message(
                 MessageType.FEEDBACK_MESSAGE,
@@ -101,8 +101,6 @@ class FeedbackService(Service):
             code=201,
         )
 
-    # Returns whether feedback is open for an event and whether this user is eligible.
-    # The frontend calls this to decide whether to show the feedback UI.
     def get_feedback_status(self, event_id: str, user_id: str) -> FeedbackStatusResponse:
         enabled = self._dao.is_feedback_enabled(event_id)
         eligible = user_id in self._dao.get_eligible_user_ids(event_id) if enabled else False
@@ -113,7 +111,6 @@ class FeedbackService(Service):
             code=200,
         )
 
-    # Retrieves the current user's own feedback for a specific event.
     def get_my_event_feedback(self, event_id: str, user_id: str) -> FeedbackResponse:
         feedback = self._dao.find_by_event_and_participant(event_id, user_id)
         if not feedback:
@@ -128,7 +125,6 @@ class FeedbackService(Service):
             code=200,
         )
 
-    # Retrieves all feedback for an event.
     def get_feedbacks(self, event_id: str) -> FeedbackListResponse:
         feedbacks = self._dao.find_by_event(event_id)
         return FeedbackListResponse(
@@ -137,7 +133,6 @@ class FeedbackService(Service):
             code=200,
         )
 
-    # Retrieves all feedback submitted by the current user.
     def get_my_feedbacks(self, user_id: str) -> FeedbackListResponse:
         feedbacks = self._dao.find_by_user(user_id)
         return FeedbackListResponse(
@@ -146,11 +141,8 @@ class FeedbackService(Service):
             code=200,
         )
 
-    # Handles incoming messages from the event bus.
-    # When the lifecycle module transitions an event to "ended":
-    #   1. Find all confirmed attendees for that event.
-    #   2. Persist a feedback session so the feedback window is open for those users.
-    #   3. Publish a FEEDBACK_MESSAGE so the Notification module can alert eligible users.
+    # Handles messages from the event bus.
+    # Enable feedback session so the feedback window is open for those users.
     def processMessage(self, message: Message) -> None:
         self._logger.info(f"Processing message: {message}")
         if message.get_type() == MessageType.LIFECYCLE_MESSAGE:
