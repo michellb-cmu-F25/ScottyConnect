@@ -5,6 +5,7 @@ import {
   listPublishedEvents,
   listMyEvents,
   apiEventToStored,
+  syncExpiredPublishedEvents,
   getEventTags,
   type PublicEvent,
 } from '../services/LifecycleService'
@@ -127,6 +128,11 @@ export default function MainPage() {
       }
       try {
         if (isLoggedIn && userId) {
+          try {
+            await syncExpiredPublishedEvents()
+          } catch {
+            // Best-effort: ignore sync failures and proceed.
+          }
           const list = (await getRecommendations(userId, strategy)).filter(isMainPageEventStillActive)
           await Promise.all(list.map(async (ev) => {
             const users = await getRegisteredUsers(ev.id)

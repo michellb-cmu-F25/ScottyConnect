@@ -31,6 +31,11 @@ interface APIEventListResponse {
   code: number
 }
 
+interface APISyncExpiredResponse {
+  scanned: number
+  ended: number
+}
+
 export type { PublicEvent } from '../schemas/event'
 
 export function apiEventToStored(ev: PublicEvent): StoredEvent {
@@ -116,6 +121,16 @@ export async function listPublishedEvents(): Promise<PublicEvent[]> {
     throw new Error(data.message || 'Failed to load events')
   }
   return data.events.map((e) => apiEventFromSnake(e))
+}
+
+export async function syncExpiredPublishedEvents(): Promise<{ scanned: number; ended: number }> {
+  const path = `/api/lifecycle/events/sync-expired${getLifecycleClockSearch()}`
+  const res = await fetch(apiUrl(path), { method: 'POST' })
+  const data: APISyncExpiredResponse = await res.json()
+  if (!res.ok) {
+    throw new Error('Failed to sync expired events')
+  }
+  return { scanned: data.scanned ?? 0, ended: data.ended ?? 0 }
 }
 
 export async function updateEvent(

@@ -58,3 +58,8 @@ class EventListResponse(BaseModel):
     message: str
     events: list[PublicEvent]
     code: int
+
+
+class SyncExpiredResponse(BaseModel):
+    scanned: int
+    ended: int

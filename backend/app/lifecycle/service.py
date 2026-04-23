@@ -146,6 +146,24 @@ class LifecycleService(Service):
             return event
         return self._persist_transition(event, "ended")
 
+    def sync_all_expired_published_events(
+        self, client_tz: str | None = None
+    ) -> tuple[int, int]:
+        """
+        Sync all expired published events to ``ended``.
+
+        Returns (ended_count, scanned_count).
+        """
+        clock_tz = resolve_lifecycle_clock_tz(client_tz)
+        events = self._dao.find_by_status("published")
+        scanned_count = len(events)
+        ended_count = 0
+        for ev in events:
+            updated = self._sync_expired_published_event(ev, clock_tz)
+            if ev.status == "published" and updated.status == "ended":
+                ended_count += 1
+        return ended_count, scanned_count
+
     def create_event(
         self, req: CreateEventRequest, owner_id: str
     ) -> EventResponse:

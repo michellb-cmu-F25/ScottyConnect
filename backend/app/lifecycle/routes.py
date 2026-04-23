@@ -8,6 +8,7 @@ from app.lifecycle.schemas import (
     CreateEventRequest,
     EventListResponse,
     EventResponse,
+    SyncExpiredResponse,
     TransitionRequest,
     UpdateEventRequest,
 )
@@ -59,6 +60,22 @@ def list_published_events():
     client_tz = request.args.get("client_tz")
     resp = get_lifecycle_service().list_published(client_tz=client_tz)
     return jsonify(resp.model_dump(mode="json")), resp.code
+
+
+@lifecycle.route("/events/sync-expired", methods=["POST"])
+@doc(
+    response=SyncExpiredResponse,
+    description="Sync expired published events to ended (idempotent)",
+    tags=["lifecycle"],
+    success_status=200,
+)
+def sync_expired_events():
+    client_tz = request.args.get("client_tz")
+    ended_count, scanned_count = get_lifecycle_service().sync_all_expired_published_events(
+        client_tz=client_tz
+    )
+    payload = SyncExpiredResponse(scanned=scanned_count, ended=ended_count)
+    return jsonify(payload.model_dump(mode="json")), 200
 
 
 @lifecycle.route("/events/<event_id>", methods=["GET"])

@@ -100,6 +100,14 @@ export default function EventDetailPage() {
   const [tasks, setTasks] = useState<TaskPreview[]>([])
   const [tasksLoading, setTasksLoading] = useState(true)
 
+  async function refreshRegisteredCount(eventId: string) {
+    const users = await getRegisteredUsers(eventId)
+    setEvent((prev) => {
+      if (!prev) return prev
+      return { ...prev, registeredCount: users.length }
+    })
+  }
+
   // Load event details on mount
   useEffect(() => {
     if (!id) return
@@ -272,10 +280,12 @@ export default function EventDetailPage() {
       if (isRegistered) {
         const registered = await unregisterEvent(id)
         setIsRegistered(registered)
+        await refreshRegisteredCount(id)
         setRegisterSuccessMessage('Successfully unregistered from the event.')
       } else {
         const registered = await registerEvent(id)
         setIsRegistered(registered)
+        await refreshRegisteredCount(id)
         setRegisterSuccessMessage('Successfully registered for the event.')
       }
     } catch (e) {
