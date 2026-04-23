@@ -215,12 +215,12 @@ class LifecycleService(Service):
         if event is None:
             return EventResponse(message="Event not found", event=None, code=404)
 
-        if event.owner_id != requester_id:
-            return EventResponse(
-                message="Only the event owner can change the event state",
-                event=None,
-                code=403,
-            )
+        # if event.owner_id != requester_id:
+        #     return EventResponse(
+        #         message="Only the event owner can change the event state",
+        #         event=None,
+        #         code=403,
+        #     )
 
         state = resolve_state(event.status)
         try:
