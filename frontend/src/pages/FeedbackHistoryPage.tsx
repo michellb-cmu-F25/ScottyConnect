@@ -84,14 +84,17 @@ export default function FeedbackHistoryPage() {
     }
   }
 
-  function formatDate(isoString: string) {
-    return new Date(isoString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
-  }
-
+  function formatDate(isoString: string): string {
+  const pdt = new Date(new Date(isoString).getTime() - 14 * 60 * 60 * 1000)
+  return pdt.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  })
+}
   return (
     <div className="feedback-page">
       <div className="feedback-container">
