@@ -85,15 +85,17 @@ function FeedbackStats({ event, onClose }: FeedbackStatsProps) {
     return `${h12}:${m} ${ampm}`
   }
 
-  function formatSubmittedAt(isoString: string): string {
-    return new Date(isoString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  }
+function formatSubmittedAt(isoString: string): string {
+  const pdt = new Date(new Date(isoString).getTime() - 14 * 60 * 60 * 1000)
+  return pdt.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  })
+}
 
   return (
     <div className="event-feedback-modal-overlay" onClick={onClose}>
