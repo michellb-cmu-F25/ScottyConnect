@@ -74,12 +74,15 @@ class AccountService(Service):
         if not request.email.endswith("cmu.edu"):
             return RegisterResponse(message="Must be a CMU affiliated email (@xxx.cmu.edu)", user=None, code=400)
 
+        # Verification number
+        verification_code = generate_verification_code()
+
         # Create user
         user = User(
             username=request.username,
             email=request.email,
             password=hash_password(request.password),
-            verification_code=generate_verification_code(),
+            verification_code=hash_password(verification_code),
             role=request.role,
         )
         
@@ -95,7 +98,7 @@ class AccountService(Service):
             {
                 "username": saved.username,
                 "recipient_email": saved.email,
-                "verification_code": saved.verification_code,
+                "verification_code": verification_code,
             }
         ))
         self._logger.info(f"User {saved.username} registered successfully", user_id=saved.id)
@@ -110,7 +113,7 @@ class AccountService(Service):
             return VerifyResponse(message="User not found", user=None, token=None, code=404)
         
         # Check if verification code is correct
-        if user.verification_code != request.code:
+        if not verify_password(request.code, user.verification_code):
             return VerifyResponse(message="Invalid verification code", user=None, token=None, code=401)
         
         # Set user as verified
