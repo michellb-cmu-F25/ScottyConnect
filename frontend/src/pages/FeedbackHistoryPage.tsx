@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import StorageUtil from '../common/StorageUtil'
 import { apiUrl } from '../services/Config'
 import { getLifecycleClockSearch } from '../services/LifecycleService'
@@ -18,6 +18,7 @@ interface EventInfo {
 }
 
 export default function FeedbackHistoryPage() {
+  const navigate = useNavigate()
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([])
   const [eventInfoMap, setEventInfoMap] = useState<Record<string, EventInfo>>({})
   const [loading, setLoading] = useState(true)
@@ -124,7 +125,12 @@ export default function FeedbackHistoryPage() {
               {feedbacks.map(item => {
                 const info = eventInfoMap[item.event_id]
                 return (
-                  <li key={item.id} className="feedback-history-item">
+                  <li
+                    key={item.id}
+                    className="feedback-history-item"
+                    onClick={() => navigate(`/events/${item.event_id}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className="feedback-history-item-header">
                       <p className="feedback-history-event">
                         {info?.title ?? 'Loading event...'}

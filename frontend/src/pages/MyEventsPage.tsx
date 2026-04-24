@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import FeedbackStats from './FeedbackStatsPage'
 import {
@@ -10,6 +10,7 @@ import {
   getEventTags,
 } from '../services/LifecycleService'
 import { getRegisteredEvents, unregisterEvent } from '../services/AttendanceService'
+import { apiUrl } from '../services/Config'
 import type { StoredEvent } from '../types/event'
 import StorageUtil from '../common/StorageUtil'
 import EventTagDisplay from '../components/EventTagDisplay'
@@ -80,6 +81,8 @@ export default function MyEventsPage() {
   const [registeredError, setRegisteredError] = useState('')
   const [actionError, setActionError] = useState('')
   const [tagsByEventId, setTagsByEventId] = useState<Record<string, string[]>>({})
+  const [avgRatingByEventId, setAvgRatingByEventId] = useState<Record<string, string>>({})
+  const fetchedRatingsRef = useRef<Set<string>>(new Set())
 
   const refreshCreated = useCallback(async () => {
     if (!StorageUtil.getToken()) {
@@ -104,6 +107,35 @@ export default function MyEventsPage() {
   useEffect(() => {
     refreshCreated()
   }, [refreshCreated])
+
+  // Fetch average rating for each ended registered event (once per event id)
+  useEffect(() => {
+    const token = StorageUtil.getToken()
+    if (!token) return
+    const endedEvents = registeredEvents.filter((ev) => ev.status === 'ended')
+    const toFetch = endedEvents.filter((ev) => !fetchedRatingsRef.current.has(ev.id))
+    if (toFetch.length === 0) return
+
+    toFetch.forEach((ev) => fetchedRatingsRef.current.add(ev.id))
+
+    toFetch.forEach(async (ev) => {
+      try {
+        const res = await fetch(apiUrl(`/api/feedback/events/${ev.id}`), {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (res.ok && data.feedbacks?.length > 0) {
+          const avg = (
+            data.feedbacks.reduce((sum: number, f: { rating: number }) => sum + f.rating, 0) /
+            data.feedbacks.length
+          ).toFixed(1)
+          setAvgRatingByEventId((prev) => ({ ...prev, [ev.id]: avg }))
+        }
+      } catch {
+        // silently ignore — rating is best-effort
+      }
+    })
+  }, [registeredEvents])
 
   useEffect(() => {
     if (!StorageUtil.getToken()) {
@@ -400,6 +432,9 @@ export default function MyEventsPage() {
                             <h3 className="me-event-title">{ev.title}</h3>
                             <p className="me-event-meta">{formatDate(ev)}</p>
                             {ev.location && <p className="me-event-meta">{ev.location}</p>}
+                            {ev.status === 'ended' && avgRatingByEventId[ev.id] && (
+                              <p className="me-event-meta">Rating: {avgRatingByEventId[ev.id]} / 5.0</p>
+                            )}
                             {tagsByEventId[ev.id] && tagsByEventId[ev.id].length > 0 && (
                               <EventTagDisplay tagIds={tagsByEventId[ev.id]} limit={3} />
                             )}
