@@ -31,10 +31,6 @@ class UserProfileDAO:
         result = self._col.insert_one(doc)
         return user_tag.model_copy(update={"id": str(result.inserted_id)})
 
-    def remove_tag(self, user_id: str, tag_id: str) -> bool:
-        result = self._col.delete_one({"user_id": ObjectId(user_id), "tag_id": ObjectId(tag_id)})
-        return result.deleted_count > 0
-
     def remove_all_tags(self, user_id: str) -> int:
         result = self._col.delete_many({"user_id": ObjectId(user_id)})
         return result.deleted_count

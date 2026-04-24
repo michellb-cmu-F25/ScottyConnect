@@ -33,10 +33,6 @@ class TagDAO:
     def find_all(self) -> list[Tag]:
         return [self._to_tag(doc) for doc in self._col.find()]
 
-    def delete_by_slug(self, slug: str) -> bool:
-        result = self._col.delete_one({"slug": slug})
-        return result.deleted_count > 0
-
     @staticmethod
     def _to_tag(doc: dict | None) -> Tag | None:
         if doc is None:
