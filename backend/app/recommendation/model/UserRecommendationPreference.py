@@ -1,6 +1,4 @@
-# Domain shape for a user_recommendation_preferences document — stores a user's
-# chosen recommendation strategy. `user_id` is persisted as an ObjectId in
-# MongoDB but exposed as a string at the application layer.
+# Domain shape for a user_recommendation_preferences document — stores a user's chosen recommendation strategy.
 
 from datetime import datetime, timezone
 

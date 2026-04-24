@@ -1,13 +1,5 @@
 """
 Recommendation Service
-
-Dispatches to the correct strategy via the factory, filters ranked results
-to published events, then appends any remaining published events at the end
-so the user always sees the full published catalog — ranked events first,
-unranked published events after.
-
-Also exposes read/write of per-user recommendation preferences, stored in
-the recommendation-owned `user_recommendation_preferences` collection.
 """
 
 from bson import ObjectId
@@ -82,17 +74,11 @@ class RecommendationService:
         )
 
     def get_user_preference(self, user_id: str) -> UserRecommendationPreference | None:
-        """Return the user's stored preference, or None if not set / invalid id."""
         return self._user_preference_dao.get_preference(user_id)
 
     def set_user_preference(
         self, user_id: str, preferred_strategy: str
     ) -> UserRecommendationPreference | None:
-        """Validate and upsert the user's preferred strategy.
-
-        Returns None if the strategy is not one of the known values or if
-        `user_id` cannot be converted to an ObjectId.
-        """
         if preferred_strategy not in KNOWN_STRATEGIES:
             return None
         return self._user_preference_dao.upsert_preference(user_id, preferred_strategy)
@@ -100,11 +86,9 @@ class RecommendationService:
     # ---- Tags ---------------------------------------------------------------
 
     def list_all_tags(self) -> list[Tag]:
-        """Return every selectable tag."""
         return self._tag_dao.find_all()
 
     def get_user_tag_ids(self, user_id: str) -> list[str] | None:
-        """Return the user's interested tag_ids, or None if user_id is invalid."""
         try:
             ObjectId(user_id)
         except InvalidId:
@@ -112,12 +96,6 @@ class RecommendationService:
         return self._user_profile_dao.get_user_tags(user_id)
 
     def set_user_tags(self, user_id: str, tag_ids: list[str]) -> list[str] | None:
-        """Replace the user's tag set with the provided list.
-
-        Removes all existing tags for the user first, then inserts the new set.
-        Returns the updated list of tag_ids, or None if user_id is invalid.
-        Silently ignores tag_ids that aren't valid ObjectIds or don't exist.
-        """
         try:
             ObjectId(user_id)
         except InvalidId:
@@ -148,7 +126,6 @@ class RecommendationService:
     # ---- Event Tags ----------------------------------------------------------
 
     def get_event_tag_ids(self, event_id: str) -> list[str] | None:
-        """Return the tag_ids for an event, or None if event_id is invalid."""
         try:
             ObjectId(event_id)
         except InvalidId:
@@ -156,12 +133,6 @@ class RecommendationService:
         return self._event_tag_dao.get_event_tags(event_id)
 
     def set_event_tags(self, event_id: str, tag_ids: list[str]) -> list[str] | None:
-        """Replace the event's tag set with the provided list.
-
-        Removes all existing tags for the event first, then inserts the new set.
-        Returns the updated list of tag_ids, or None if event_id is invalid.
-        Silently ignores tag_ids that aren't valid ObjectIds or don't exist.
-        """
         try:
             ObjectId(event_id)
         except InvalidId:
@@ -188,7 +159,6 @@ class RecommendationService:
         return event_tag_dao.get_event_tags(event_id)
 
     def delete_event_tags(self, event_id: str) -> int | None:
-        """Delete all tags for an event. Returns count deleted, or None if invalid id."""
         try:
             ObjectId(event_id)
         except InvalidId:

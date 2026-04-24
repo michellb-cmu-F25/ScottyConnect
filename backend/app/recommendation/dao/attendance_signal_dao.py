@@ -1,9 +1,4 @@
 # Data access for attendance signals used by popularity-based recommendations.
-#
-# Reads directly from the shared `attendance_records` collection so that the
-# recommendation service stays independent of the attendance service code.
-# Only read operations live here — writes to attendance_records belong to
-# the attendance service.
 
 from app.utils.db import Database, get_database
 
@@ -19,10 +14,6 @@ class AttendanceSignalDAO:
         return self._database.db[ATTENDANCE_RECORDS_COLLECTION]
 
     def count_attendance_by_event(self) -> dict[str, int]:
-        """
-        Return a mapping of event_id -> number of users who actually attended
-        (i.e. registration_time is set). Events with zero registration are omitted.
-        """
         pipeline = [
             {"$match": {"registration_time": {"$ne": None}}},
             {"$group": {"_id": "$event_id", "count": {"$sum": 1}}},

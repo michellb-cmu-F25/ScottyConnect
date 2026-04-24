@@ -4,11 +4,6 @@ Hybrid recommendation strategy.
 Blends tag-based and popularity signals. Each signal produces raw scores
 (tag overlap count, attendance count), which are normalized to [0, 1] by
 dividing by the max observed score, then combined with configurable weights.
-
-Edge cases:
-- User has no tags → tag signal is empty, falls back to popularity only.
-- No attendance data → popularity signal is empty, falls back to tag only.
-- Neither signal available → returns empty list.
 """
 
 from app.recommendation.dao.attendance_signal_dao import AttendanceSignalDAO

@@ -1,8 +1,4 @@
 # Data access for event metadata used by the recommendation service.
-#
-# Reads directly from the shared `events` collection so that the recommendation
-# service stays independent of the lifecycle service code. Only read operations
-# live here — writes to events belong to the lifecycle service.
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -23,10 +19,6 @@ class EventSignalDAO:
         return self._database.db[EVENTS_COLLECTION]
 
     def get_published_events_by_ids(self, event_ids: list[str]) -> list[RecommendedEvent]:
-        """
-        Return published events matching `event_ids`, preserving the
-        input order. Invalid ObjectIds and non-published events are skipped.
-        """
         if not event_ids:
             return []
 
@@ -50,10 +42,6 @@ class EventSignalDAO:
         return [by_id[eid] for eid in event_ids if eid in by_id]
 
     def get_all_published_events(self) -> list[RecommendedEvent]:
-        """
-        Return all published events, sorted by created_at descending
-        (newest first) as a neutral default for the unranked tail.
-        """
         docs = self._col.find({"status": PUBLISHED_STATUS}).sort("created_at", -1)
         return [self._to_recommended_event(doc) for doc in docs]
 
