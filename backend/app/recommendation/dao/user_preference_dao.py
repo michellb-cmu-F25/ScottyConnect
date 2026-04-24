@@ -1,8 +1,4 @@
 # Data access for per-user recommendation preferences.
-#
-# Owns the `user_recommendation_preferences` collection. `user_id` is persisted
-# as an ObjectId to match the users collection primary key. The strategy value
-# is stored as a plain string and validated at the service layer.
 
 from datetime import datetime, timezone
 
@@ -24,7 +20,6 @@ class UserPreferenceDAO:
         return self._database.db[PREFERENCES_COLLECTION]
 
     def get_preference(self, user_id: str) -> UserRecommendationPreference | None:
-        """Return the stored preference for `user_id`, or None if not set / invalid id."""
         try:
             user_oid = ObjectId(user_id)
         except InvalidId:
@@ -38,8 +33,6 @@ class UserPreferenceDAO:
     def upsert_preference(
         self, user_id: str, preferred_strategy: str
     ) -> UserRecommendationPreference | None:
-        """Create or update the preference for `user_id`. Returns the saved record,
-        or None if `user_id` is not a valid ObjectId."""
         try:
             user_oid = ObjectId(user_id)
         except InvalidId:

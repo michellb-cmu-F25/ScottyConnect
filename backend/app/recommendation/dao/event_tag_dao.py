@@ -1,9 +1,4 @@
 # Data access for event-tag associations.
-#
-# NOTE: The events collection is not yet designed.  For now this DAO only
-# works against `event_tags` to support tag-based recommendations.
-# Methods depending on a real `events` collection are stubbed and will be
-# completed once that schema is finalised.
 
 from app.recommendation.model.EventTag import EventTag
 from app.utils.db import Database, get_database
@@ -21,10 +16,6 @@ class EventTagDAO:
         return self._database.db[EVENT_TAGS_COLLECTION]
 
     def find_event_ids_by_tags(self, tag_ids: list[str]) -> dict[str, int]:
-        """
-        Return a mapping of event_id -> overlap_count for all events that
-        share at least one tag with the given tag_ids list.
-        """
         docs = self._col.find({"tag_id": {"$in": [ObjectId(tag_id) for tag_id in tag_ids]}})
         scores: dict[str, int] = {}
         for doc in docs:
@@ -33,7 +24,6 @@ class EventTagDAO:
         return scores
 
     def add_event_tag(self, event_tag: EventTag) -> EventTag:
-        """Associate a tag with an event (idempotent on event_id + tag_id)."""
         event_oid = ObjectId(event_tag.event_id)
         tag_oid = ObjectId(event_tag.tag_id)
         if self._col.find_one({"event_id": event_oid, "tag_id": tag_oid}):
@@ -49,20 +39,14 @@ class EventTagDAO:
         return result.deleted_count > 0
 
     def get_event_tags(self, event_id: str) -> list[str]:
-        """Return all tag_ids associated with the given event."""
         docs = self._col.find({"event_id": ObjectId(event_id)})
         return [str(doc["tag_id"]) for doc in docs]
 
     def remove_all_event_tags(self, event_id: str) -> int:
-        """Remove every tag association for the given event. Returns the number deleted."""
         result = self._col.delete_many({"event_id": ObjectId(event_id)})
         return result.deleted_count
 
     def get_all_event_ids(self) -> list[str]:
-        """
-        Stub — returns all unique event_ids present in event_tags.
-        Will be replaced once a proper `events` collection exists.
-        """
         return list(self._col.distinct("event_id"))
 
     @staticmethod

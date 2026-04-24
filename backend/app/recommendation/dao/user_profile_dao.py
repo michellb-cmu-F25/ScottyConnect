@@ -16,13 +16,11 @@ class UserProfileDAO:
         return self._database.db[USER_TAGS_COLLECTION]
 
     def get_user_tags(self, user_id: str) -> list[str]:
-        """Return all tag_ids associated with the given user."""
         docs = self._col.find({"user_id": ObjectId(user_id)})
         docs = [self._to_user_tag(doc) for doc in docs]
         return [doc.tag_id for doc in docs]
 
     def add_tag(self, user_tag: UserTag) -> UserTag:
-        """Associate a tag with a user (idempotent on user_id + tag_id)."""
         user_oid = ObjectId(user_tag.user_id)
         tag_oid = ObjectId(user_tag.tag_id)
         if self._col.find_one({"user_id": user_oid, "tag_id": tag_oid}):
@@ -38,7 +36,6 @@ class UserProfileDAO:
         return result.deleted_count > 0
 
     def remove_all_tags(self, user_id: str) -> int:
-        """Remove every tag association for the given user. Returns the number deleted."""
         result = self._col.delete_many({"user_id": ObjectId(user_id)})
         return result.deleted_count
 

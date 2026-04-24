@@ -35,14 +35,10 @@ class RecommendationResponse(BaseModel):
 
 
 class UserPreferenceBody(BaseModel):
-    """Request body for setting a user's recommendation preference."""
-
     preferred_strategy: str
 
 
 class UserPreferenceResponse(BaseModel):
-    """Response payload for the preference endpoints."""
-
     message: str
     user_id: str
     preferred_strategy: str
@@ -50,30 +46,22 @@ class UserPreferenceResponse(BaseModel):
 
 
 class TagItem(BaseModel):
-    """A single selectable tag."""
-
     id: str
     slug: str
     display_name: str | None = None
 
 
 class TagListResponse(BaseModel):
-    """Response listing all available tags."""
-
     message: str
     tags: list[TagItem]
     code: int
 
 
 class UserTagsBody(BaseModel):
-    """Request body for setting a user's interested tags."""
-
     tag_ids: list[str]
 
 
 class UserTagsResponse(BaseModel):
-    """Response payload for user-tag endpoints."""
-
     message: str
     user_id: str
     tag_ids: list[str]
@@ -81,14 +69,10 @@ class UserTagsResponse(BaseModel):
 
 
 class EventTagsBody(BaseModel):
-    """Request body for setting an event's tags."""
-
     tag_ids: list[str]
 
 
 class EventTagsResponse(BaseModel):
-    """Response payload for event-tag endpoints."""
-
     message: str
     event_id: str
     tag_ids: list[str]
